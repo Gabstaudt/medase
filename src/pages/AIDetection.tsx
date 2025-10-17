@@ -69,9 +69,7 @@ export default function AIDetection() {
   const [selectedPatient, setSelectedPatient] = useState<string>("");
   const [analyzing, setAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState<AIAnalysis | null>(
-    null,
-  );
+  const [analysisResults, setAnalysisResults] = useState<AIAnalysis | null>(null);
   const [progress, setProgress] = useState(0);
 
   const [formData, setFormData] = useState({
@@ -207,16 +205,16 @@ export default function AIDetection() {
                   "Padrão de cromatina irregular",
                 ]
               : riskLevel === "medium"
-                ? [
-                    "Células atípicas identificadas",
-                    "Alterações celulares moderadas",
-                    "Necessário acompanhamento",
-                  ]
-                : [
-                    "Células dentro da normalidade",
-                    "Sem alterações significativas detectadas",
-                    "Padrão celular normal",
-                  ],
+              ? [
+                  "Células atípicas identificadas",
+                  "Alterações celulares moderadas",
+                  "Necessário acompanhamento",
+                ]
+              : [
+                  "Células dentro da normalidade",
+                  "Sem alterações significativas detectadas",
+                  "Padrão celular normal",
+                ],
           recommendations:
             riskLevel === "high"
               ? [
@@ -226,16 +224,16 @@ export default function AIDetection() {
                   "Repetir exame em 3 meses",
                 ]
               : riskLevel === "medium"
-                ? [
-                    "Colposcopia de acompanhamento",
-                    "Repetir citologia em 6 meses",
-                    "Monitoramento clínico",
-                  ]
-                : [
-                    "Manter rotina de exames preventivos",
-                    "Repetir em 1 ano",
-                    "Acompanhamento de rotina",
-                  ],
+              ? [
+                  "Colposcopia de acompanhamento",
+                  "Repetir citologia em 6 meses",
+                  "Monitoramento clínico",
+                ]
+              : [
+                  "Manter rotina de exames preventivos",
+                  "Repetir em 1 ano",
+                  "Acompanhamento de rotina",
+                ],
           requiresFollowUp: riskLevel !== "low",
         },
         analyzedAt: new Date().toISOString(),
@@ -277,19 +275,19 @@ export default function AIDetection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
             Detecção de Câncer Cervical - IA
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 break-words">
             Análise inteligente para detecção precoce de câncer cervical
           </p>
         </div>
         <Button
           variant="outline"
           onClick={resetForm}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <RefreshCw className="h-4 w-4" />
           Nova Análise
@@ -299,13 +297,13 @@ export default function AIDetection() {
       {/* AI Info Card */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
               <Brain className="h-6 w-6 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="font-semibold text-gray-900">IA Medase v2.1</h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 break-words">
                 Sistema de inteligência artificial treinado para detecção de
                 câncer cervical com 95% de precisão
               </p>
@@ -328,11 +326,8 @@ export default function AIDetection() {
             <CardContent>
               <div>
                 <Label htmlFor="patient">Selecione o Paciente</Label>
-                <Select
-                  value={selectedPatient}
-                  onValueChange={setSelectedPatient}
-                >
-                  <SelectTrigger>
+                <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Escolha um paciente..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -348,15 +343,13 @@ export default function AIDetection() {
                     <p className="font-medium">{selectedPatientData.name}</p>
                     <p className="text-sm text-gray-600">
                       {new Date().getFullYear() -
-                        new Date(
-                          selectedPatientData.birthDate,
-                        ).getFullYear()}{" "}
+                        new Date(selectedPatientData.birthDate).getFullYear()}{" "}
                       anos •
                       {selectedPatientData.gender === "female"
                         ? " Feminino"
                         : selectedPatientData.gender === "male"
-                          ? " Masculino"
-                          : " Outro"}
+                        ? " Masculino"
+                        : " Outro"}
                     </p>
                   </div>
                 )}
@@ -386,12 +379,8 @@ export default function AIDetection() {
                   />
                   <Label htmlFor="images" className="cursor-pointer">
                     <Upload className="h-8 w-8 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600">
-                      Clique para fazer upload das imagens
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      JPG, PNG, TIFF até 10MB cada
-                    </p>
+                    <p className="text-gray-600">Clique para fazer upload das imagens</p>
+                    <p className="text-sm text-gray-400 mt-1">JPG, PNG, TIFF até 10MB cada</p>
                   </Label>
                 </div>
               </div>
@@ -405,12 +394,14 @@ export default function AIDetection() {
                         key={index}
                         className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
                       >
-                        <span className="text-sm">{file}</span>
+                        <span className="text-sm break-words">{file}</span>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => removeFile(index)}
                           className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                          aria-label={`Remover ${file}`}
+                          title={`Remover ${file}`}
                         >
                           ×
                         </Button>
@@ -454,12 +445,8 @@ export default function AIDetection() {
                     <div key={symptom} className="flex items-center space-x-2">
                       <Checkbox
                         id={`symptom-${symptom}`}
-                        checked={formData.clinicalData.symptoms.includes(
-                          symptom,
-                        )}
-                        onCheckedChange={(checked) =>
-                          handleSymptomChange(symptom, !!checked)
-                        }
+                        checked={formData.clinicalData.symptoms.includes(symptom)}
+                        onCheckedChange={(checked) => handleSymptomChange(symptom, !!checked)}
                       />
                       <Label htmlFor={`symptom-${symptom}`} className="text-sm">
                         {symptom}
@@ -476,12 +463,8 @@ export default function AIDetection() {
                     <div key={factor} className="flex items-center space-x-2">
                       <Checkbox
                         id={`risk-${factor}`}
-                        checked={formData.clinicalData.riskFactors.includes(
-                          factor,
-                        )}
-                        onCheckedChange={(checked) =>
-                          handleRiskFactorChange(factor, !!checked)
-                        }
+                        checked={formData.clinicalData.riskFactors.includes(factor)}
+                        onCheckedChange={(checked) => handleRiskFactorChange(factor, !!checked)}
                       />
                       <Label htmlFor={`risk-${factor}`} className="text-sm">
                         {factor}
@@ -498,12 +481,8 @@ export default function AIDetection() {
                     <div key={exam} className="flex items-center space-x-2">
                       <Checkbox
                         id={`exam-${exam}`}
-                        checked={formData.clinicalData.previousExams.includes(
-                          exam,
-                        )}
-                        onCheckedChange={(checked) =>
-                          handleExamChange(exam, !!checked)
-                        }
+                        checked={formData.clinicalData.previousExams.includes(exam)}
+                        onCheckedChange={(checked) => handleExamChange(exam, !!checked)}
                       />
                       <Label htmlFor={`exam-${exam}`} className="text-sm">
                         {exam}
@@ -539,11 +518,7 @@ export default function AIDetection() {
             <CardContent className="p-6">
               <Button
                 onClick={performAnalysis}
-                disabled={
-                  analyzing ||
-                  !selectedPatient ||
-                  formData.imageFiles.length === 0
-                }
+                disabled={analyzing || !selectedPatient || formData.imageFiles.length === 0}
                 className="w-full h-12 text-lg"
               >
                 {analyzing ? (
@@ -585,9 +560,7 @@ export default function AIDetection() {
                 </div>
                 <div>
                   <p className="font-medium">Upload de Imagens</p>
-                  <p className="text-gray-600">
-                    Faça upload das imagens citológicas do exame
-                  </p>
+                  <p className="text-gray-600">Faça upload das imagens citológicas do exame</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -596,9 +569,7 @@ export default function AIDetection() {
                 </div>
                 <div>
                   <p className="font-medium">Dados Clínicos</p>
-                  <p className="text-gray-600">
-                    Informe sintomas e fatores de risco
-                  </p>
+                  <p className="text-gray-600">Informe sintomas e fatores de risco</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -607,9 +578,7 @@ export default function AIDetection() {
                 </div>
                 <div>
                   <p className="font-medium">Análise IA</p>
-                  <p className="text-gray-600">
-                    IA analisa as imagens e dados clínicos
-                  </p>
+                  <p className="text-gray-600">IA analisa as imagens e dados clínicos</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -618,9 +587,7 @@ export default function AIDetection() {
                 </div>
                 <div>
                   <p className="font-medium">Resultados</p>
-                  <p className="text-gray-600">
-                    Receba relatório detalhado com recomendações
-                  </p>
+                  <p className="text-gray-600">Receba relatório detalhado com recomendações</p>
                 </div>
               </div>
             </CardContent>
@@ -636,9 +603,8 @@ export default function AIDetection() {
             </CardHeader>
             <CardContent className="text-sm text-amber-700">
               <p>
-                Esta análise de IA é uma ferramenta de apoio diagnóstico e não
-                substitui a avaliação médica profissional. Sempre consulte um
-                especialista para interpretação dos resultados.
+                Esta análise de IA é uma ferramenta de apoio diagnóstico e não substitui a avaliação
+                médica profissional. Sempre consulte um especialista para interpretação dos resultados.
               </p>
             </CardContent>
           </Card>
@@ -654,40 +620,32 @@ export default function AIDetection() {
                   .getAnalyses()
                   .slice(-3)
                   .map((analysis) => {
-                    const patient = patients.find(
-                      (p) => p.id === analysis.patientId,
-                    );
+                    const patient = patients.find((p) => p.id === analysis.patientId);
                     const riskColor =
                       analysis.results.riskLevel === "high"
                         ? "text-red-600"
                         : analysis.results.riskLevel === "medium"
-                          ? "text-amber-600"
-                          : "text-green-600";
+                        ? "text-amber-600"
+                        : "text-green-600";
 
                     return (
                       <div key={analysis.id} className="p-3 border rounded-lg">
-                        <p className="font-medium">
-                          {patient?.name || "Paciente"}
-                        </p>
+                        <p className="font-medium">{patient?.name || "Paciente"}</p>
                         <p className={`text-xs ${riskColor}`}>
                           {analysis.results.riskLevel === "high"
                             ? "Alto Risco"
                             : analysis.results.riskLevel === "medium"
-                              ? "Médio Risco"
-                              : "Baixo Risco"}
+                            ? "Médio Risco"
+                            : "Baixo Risco"}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {new Date(analysis.analyzedAt).toLocaleDateString(
-                            "pt-BR",
-                          )}
+                          {new Date(analysis.analyzedAt).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     );
                   })}
                 {store.getAnalyses().length === 0 && (
-                  <p className="text-gray-500 text-center py-4">
-                    Nenhuma análise realizada ainda
-                  </p>
+                  <p className="text-gray-500 text-center py-4">Nenhuma análise realizada ainda</p>
                 )}
               </div>
             </CardContent>
@@ -717,8 +675,8 @@ export default function AIDetection() {
                     analysisResults.results.riskLevel === "high"
                       ? "bg-red-100 text-red-800"
                       : analysisResults.results.riskLevel === "medium"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-green-100 text-green-800"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-green-100 text-green-800"
                   }`}
                 >
                   {analysisResults.results.riskLevel === "high" ? (
@@ -729,21 +687,16 @@ export default function AIDetection() {
                   {analysisResults.results.riskLevel === "high"
                     ? "Alto Risco"
                     : analysisResults.results.riskLevel === "medium"
-                      ? "Médio Risco"
-                      : "Baixo Risco"}
+                    ? "Médio Risco"
+                    : "Baixo Risco"}
                 </div>
               </div>
 
               {/* Confidence */}
               <div>
-                <Label className="text-base font-semibold">
-                  Confiança da Análise
-                </Label>
+                <Label className="text-base font-semibold">Confiança da Análise</Label>
                 <div className="flex items-center gap-3 mt-2">
-                  <Progress
-                    value={analysisResults.results.confidence * 100}
-                    className="flex-1"
-                  />
+                  <Progress value={analysisResults.results.confidence * 100} className="flex-1" />
                   <span className="text-xl font-bold text-primary">
                     {Math.round(analysisResults.results.confidence * 100)}%
                   </span>
@@ -754,15 +707,10 @@ export default function AIDetection() {
 
               {/* Findings */}
               <div>
-                <Label className="text-base font-semibold">
-                  Achados da Análise
-                </Label>
+                <Label className="text-base font-semibold">Achados da Análise</Label>
                 <ul className="mt-3 space-y-2">
                   {analysisResults.results.findings.map((finding, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 text-gray-700"
-                    >
+                    <li key={index} className="flex items-start gap-2 text-gray-700">
                       <span className="text-primary mt-1">•</span>
                       {finding}
                     </li>
@@ -775,10 +723,7 @@ export default function AIDetection() {
                 <Label className="text-base font-semibold">Recomendações</Label>
                 <ul className="mt-3 space-y-2">
                   {analysisResults.results.recommendations.map((rec, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 text-gray-700"
-                    >
+                    <li key={index} className="flex items-start gap-2 text-gray-700">
                       <span className="text-amber-500 mt-1">•</span>
                       {rec}
                     </li>
@@ -793,19 +738,18 @@ export default function AIDetection() {
                     Acompanhamento Necessário
                   </div>
                   <p className="text-amber-700 mt-2">
-                    Este resultado requer acompanhamento médico especializado
-                    urgente. Entre em contato com um oncologista o mais breve
-                    possível.
+                    Este resultado requer acompanhamento médico especializado urgente. Entre em
+                    contato com um oncologista o mais breve possível.
                   </p>
                 </div>
               )}
 
-              <div className="flex items-center gap-3 pt-4">
-                <Button className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
+                <Button className="flex items-center gap-2 w-full sm:w-auto">
                   <Download className="h-4 w-4" />
                   Baixar Relatório Completo
                 </Button>
-                <Button variant="outline" onClick={() => setShowResults(false)}>
+                <Button variant="outline" onClick={() => setShowResults(false)} className="w-full sm:w-auto">
                   Fechar
                 </Button>
               </div>

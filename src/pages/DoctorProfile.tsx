@@ -29,33 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const states = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ];
 
 export default function DoctorProfile() {
@@ -93,7 +67,6 @@ export default function DoctorProfile() {
   });
 
   const handleSave = () => {
-    // Validate passwords if changing
     if (formData.security.newPassword) {
       if (formData.security.newPassword !== formData.security.confirmPassword) {
         toast({
@@ -103,7 +76,6 @@ export default function DoctorProfile() {
         });
         return;
       }
-
       if (formData.security.newPassword.length < 8) {
         toast({
           title: "Erro",
@@ -113,11 +85,7 @@ export default function DoctorProfile() {
         return;
       }
     }
-
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
-    });
+    toast({ title: "Perfil atualizado", description: "Suas informações foram salvas com sucesso." });
   };
 
   const addSpecialization = () => {
@@ -129,10 +97,7 @@ export default function DoctorProfile() {
         ...prev,
         credentials: {
           ...prev.credentials,
-          specializations: [
-            ...prev.credentials.specializations,
-            newSpecialization.trim(),
-          ],
+          specializations: [...prev.credentials.specializations, newSpecialization.trim()],
         },
       }));
       setNewSpecialization("");
@@ -144,9 +109,7 @@ export default function DoctorProfile() {
       ...prev,
       credentials: {
         ...prev.credentials,
-        specializations: prev.credentials.specializations.filter(
-          (_, i) => i !== index,
-        ),
+        specializations: prev.credentials.specializations.filter((_, i) => i !== index),
       },
     }));
   };
@@ -155,8 +118,8 @@ export default function DoctorProfile() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Meu Perfil</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Meu Perfil</h1>
+        <p className="text-gray-600 mt-1 break-words">
           Gerencie suas informações pessoais e profissionais
         </p>
       </div>
@@ -179,9 +142,8 @@ export default function DoctorProfile() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -190,12 +152,8 @@ export default function DoctorProfile() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -205,12 +163,8 @@ export default function DoctorProfile() {
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -218,12 +172,8 @@ export default function DoctorProfile() {
                   <Input
                     id="license"
                     value={formData.license}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        license: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, license: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -245,12 +195,8 @@ export default function DoctorProfile() {
                   <Input
                     id="specialty"
                     value={formData.specialty}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        specialty: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, specialty: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -259,11 +205,9 @@ export default function DoctorProfile() {
                     id="institution"
                     value={formData.institution}
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        institution: e.target.value,
-                      }))
+                      setFormData((prev) => ({ ...prev, institution: e.target.value }))
                     }
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -277,12 +221,10 @@ export default function DoctorProfile() {
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        credentials: {
-                          ...prev.credentials,
-                          university: e.target.value,
-                        },
+                        credentials: { ...prev.credentials, university: e.target.value },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -300,6 +242,7 @@ export default function DoctorProfile() {
                         },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -312,45 +255,46 @@ export default function DoctorProfile() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      credentials: {
-                        ...prev.credentials,
-                        residency: e.target.value,
-                      },
+                      credentials: { ...prev.credentials, residency: e.target.value },
                     }))
                   }
+                  className="w-full"
                 />
               </div>
 
               <div>
                 <Label>Especializações</Label>
-                <div className="flex gap-2 mt-2">
+                {/* Input + botão responsivos */}
+                <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
                   <Input
                     value={newSpecialization}
                     onChange={(e) => setNewSpecialization(e.target.value)}
                     placeholder="Digite uma especialização"
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), addSpecialization())
-                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSpecialization();
+                      }
+                    }}
+                    className="w-full"
                   />
-                  <Button type="button" onClick={addSpecialization} size="sm">
+                  <Button type="button" onClick={addSpecialization} size="sm" aria-label="Adicionar especialização">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+
                 <div className="flex flex-wrap gap-2 mt-2">
                   {formData.credentials.specializations.map((spec, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {spec}
+                    <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                      <span className="break-words">{spec}</span>
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className="h-4 w-4 p-0 hover:bg-transparent"
                         onClick={() => removeSpecialization(index)}
+                        aria-label={`Remover ${spec}`}
+                        title={`Remover ${spec}`}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -382,6 +326,7 @@ export default function DoctorProfile() {
                         address: { ...prev.address, street: e.target.value },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -395,6 +340,7 @@ export default function DoctorProfile() {
                         address: { ...prev.address, number: e.target.value },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -405,12 +351,10 @@ export default function DoctorProfile() {
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        address: {
-                          ...prev.address,
-                          complement: e.target.value,
-                        },
+                        address: { ...prev.address, complement: e.target.value },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -427,6 +371,7 @@ export default function DoctorProfile() {
                         address: { ...prev.address, city: e.target.value },
                       }))
                     }
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -440,7 +385,7 @@ export default function DoctorProfile() {
                       }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="UF" />
                     </SelectTrigger>
                     <SelectContent>
@@ -464,6 +409,7 @@ export default function DoctorProfile() {
                       }))
                     }
                     placeholder="00000-000"
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -489,13 +435,11 @@ export default function DoctorProfile() {
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        security: {
-                          ...prev.security,
-                          currentPassword: e.target.value,
-                        },
+                        security: { ...prev.security, currentPassword: e.target.value },
                       }))
                     }
                     placeholder="Digite sua senha atual"
+                    className="w-full"
                   />
                   <Button
                     type="button"
@@ -503,12 +447,9 @@ export default function DoctorProfile() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
@@ -526,13 +467,11 @@ export default function DoctorProfile() {
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
-                          security: {
-                            ...prev.security,
-                            newPassword: e.target.value,
-                          },
+                          security: { ...prev.security, newPassword: e.target.value },
                         }))
                       }
                       placeholder="Digite a nova senha"
+                      className="w-full"
                     />
                     <Button
                       type="button"
@@ -540,12 +479,9 @@ export default function DoctorProfile() {
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowNewPassword(!showNewPassword)}
+                      aria-label={showNewPassword ? "Ocultar nova senha" : "Mostrar nova senha"}
                     >
-                      {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
@@ -558,30 +494,28 @@ export default function DoctorProfile() {
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        security: {
-                          ...prev.security,
-                          confirmPassword: e.target.value,
-                        },
+                        security: { ...prev.security, confirmPassword: e.target.value },
                       }))
                     }
                     placeholder="Confirme a nova senha"
+                    className="w-full"
                   />
                 </div>
               </div>
               <p className="text-sm text-gray-600">
-                A senha deve ter pelo menos 8 caracteres, incluindo letras
-                maiúsculas, minúsculas e números.
+                A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas,
+                minúsculas e números.
               </p>
             </CardContent>
           </Card>
 
           {/* Save Button */}
-          <div className="flex items-center gap-4">
-            <Button onClick={handleSave} className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Button onClick={handleSave} className="flex items-center gap-2 w-full sm:w-auto">
               <Save className="h-4 w-4" />
               Salvar Alterações
             </Button>
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="outline" className="w-full sm:w-auto">Cancelar</Button>
           </div>
         </div>
 
@@ -597,9 +531,9 @@ export default function DoctorProfile() {
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <User className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-gray-900">{formData.name}</h3>
-                <p className="text-sm text-gray-600">{formData.specialty}</p>
-                <Badge className="mt-2">{formData.license}</Badge>
+                <h3 className="font-semibold text-gray-900 break-words">{formData.name}</h3>
+                <p className="text-sm text-gray-600 break-words">{formData.specialty}</p>
+                <Badge className="mt-2 break-words">{formData.license}</Badge>
               </div>
             </CardContent>
           </Card>
@@ -639,8 +573,8 @@ export default function DoctorProfile() {
             </CardHeader>
             <CardContent className="text-sm text-amber-700">
               <p>
-                Mantenha suas informações sempre atualizadas e use senhas
-                seguras. Recomendamos alterar a senha a cada 90 dias.
+                Mantenha suas informações sempre atualizadas e use senhas seguras.
+                Recomendamos alterar a senha a cada 90 dias.
               </p>
             </CardContent>
           </Card>

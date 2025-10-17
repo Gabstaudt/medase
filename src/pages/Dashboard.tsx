@@ -66,20 +66,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Visão geral do sistema Medase</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1 break-words">Visão geral do sistema Medase</p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/patients/new">
-            <Button className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link to="/patients/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Novo Paciente
             </Button>
           </Link>
-          <Link to="/ai-detection">
-            <Button variant="outline" className="flex items-center gap-2">
+          <Link to="/ai-detection" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Análise IA
             </Button>
@@ -102,9 +102,7 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
-                  {stat.value}
-                </div>
+                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
                 <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
                 <div className="flex items-center mt-2 text-xs text-green-600">
                   <TrendingUp className="h-3 w-3 mr-1" />
@@ -126,9 +124,7 @@ export default function Dashboard() {
                 Pacientes Recentes
               </CardTitle>
               <Link to="/patients">
-                <Button variant="outline" size="sm">
-                  Ver Todos
-                </Button>
+                <Button variant="outline" size="sm">Ver Todos</Button>
               </Link>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -136,9 +132,7 @@ export default function Dashboard() {
                 <PatientCard key={patient.id} patient={patient} compact />
               ))}
               {stats.recentPatients.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhum paciente encontrado
-                </div>
+                <div className="text-center py-8 text-gray-500">Nenhum paciente encontrado</div>
               )}
             </CardContent>
           </Card>
@@ -186,41 +180,36 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="space-y-3">
               {stats.recentAnalyses.map((analysis) => {
-                const patient = stats.recentPatients.find(
-                  (p) => p.id === analysis.patientId,
-                );
+                const patient =
+                  stats.recentPatients.find((p) => p.id === analysis.patientId) ||
+                  store.getPatients().find((p) => p.id === analysis.patientId);
+
                 const riskColor =
                   analysis.results.riskLevel === "high"
                     ? "bg-red-100 text-red-800"
                     : analysis.results.riskLevel === "medium"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-green-100 text-green-800";
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-green-100 text-green-800";
 
                 return (
-                  <div
-                    key={analysis.id}
-                    className="p-3 border rounded-lg bg-gray-50"
-                  >
+                  <div key={analysis.id} className="p-3 border rounded-lg bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">
+                      <span className="font-medium text-sm break-words">
                         {patient?.name || "Paciente não encontrado"}
                       </span>
                       <Badge className={riskColor}>
                         {analysis.results.riskLevel === "high"
                           ? "Alto Risco"
                           : analysis.results.riskLevel === "medium"
-                            ? "Médio Risco"
-                            : "Baixo Risco"}
+                          ? "Médio Risco"
+                          : "Baixo Risco"}
                       </Badge>
                     </div>
                     <div className="text-xs text-gray-600">
-                      Confiança: {Math.round(analysis.results.confidence * 100)}
-                      %
+                      Confiança: {Math.round(analysis.results.confidence * 100)}%
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {new Date(analysis.analyzedAt).toLocaleDateString(
-                        "pt-BR",
-                      )}
+                      {new Date(analysis.analyzedAt).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                 );
@@ -254,9 +243,7 @@ export default function Dashboard() {
               <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
                 <div className="flex items-center gap-2 text-blue-800">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="font-medium text-sm">
-                    Sistema Atualizado
-                  </span>
+                  <span className="font-medium text-sm">Sistema Atualizado</span>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
                   IA Medase v2.1 funcionando normalmente

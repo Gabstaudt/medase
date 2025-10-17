@@ -37,22 +37,18 @@ export default function PatientList() {
   };
 
   const activePatients = patients.filter((p) => p.status === "active").length;
-  const inactivePatients = patients.filter(
-    (p) => p.status === "inactive",
-  ).length;
+  const inactivePatients = patients.filter((p) => p.status === "inactive").length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pacientes</h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie todos os pacientes do sistema
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Pacientes</h1>
+          <p className="text-gray-600 mt-1">Gerencie todos os pacientes do sistema</p>
         </div>
-        <Link to="/patients/new">
-          <Button className="flex items-center gap-2">
+        <Link to="/patients/new" className="w-full sm:w-auto">
+          <Button className="flex items-center gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Novo Paciente
           </Button>
@@ -82,9 +78,7 @@ export default function PatientList() {
                 <Users className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-600">
-                  {activePatients}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{activePatients}</div>
                 <div className="text-sm text-gray-600">Ativos</div>
               </div>
             </div>
@@ -98,9 +92,7 @@ export default function PatientList() {
                 <Users className="h-5 w-5 text-gray-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-600">
-                  {inactivePatients}
-                </div>
+                <div className="text-2xl font-bold text-gray-600">{inactivePatients}</div>
                 <div className="text-sm text-gray-600">Inativos</div>
               </div>
             </div>
@@ -115,13 +107,9 @@ export default function PatientList() {
               </div>
               <div>
                 <div className="text-2xl font-bold text-amber-600">
-                  {
-                    patients.filter(
-                      (p) =>
-                        p.clinicalData.allergies.length > 0 ||
-                        p.clinicalData.medicalHistory.length > 0,
-                    ).length
-                  }
+                  {patients.filter(
+                    (p) => p.clinicalData.allergies.length > 0 || p.clinicalData.medicalHistory.length > 0
+                  ).length}
                 </div>
                 <div className="text-sm text-gray-600">Com Restrições</div>
               </div>
@@ -133,17 +121,19 @@ export default function PatientList() {
       {/* View Controls */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              Lista de Pacientes
+              <span className="truncate">Lista de Pacientes</span>
               <Badge variant="secondary" className="ml-2">
                 {patients.length} pacientes
               </Badge>
             </CardTitle>
-            <div className="flex items-center gap-2">
+
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center border rounded-lg p-1">
                 <Button
+                  aria-label="Ver em tabela"
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("table")}
@@ -152,6 +142,7 @@ export default function PatientList() {
                   <List className="h-4 w-4" />
                 </Button>
                 <Button
+                  aria-label="Ver em cartões"
                   variant={viewMode === "cards" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("cards")}
@@ -160,25 +151,19 @@ export default function PatientList() {
                   <Grid className="h-4 w-4" />
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1"
-              >
+
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
                 <Filter className="h-4 w-4" />
                 Filtros
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1"
-              >
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
                 <Download className="h-4 w-4" />
                 Exportar
               </Button>
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           {viewMode === "table" ? (
             <PatientTable patients={patients} onDelete={handleDeletePatient} />

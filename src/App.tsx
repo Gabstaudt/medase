@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
+import HeaderBar from "@/components/layout/HeaderBar";
+import { useState } from "react";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -47,7 +49,6 @@ const App = () => (
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-
         </AuthAwareLayout>
       </BrowserRouter>
     </TooltipProvider>
@@ -59,22 +60,43 @@ export default App;
 // --------------------------------------------------
 // Layout inteligente: oculta Sidebar nas rotas de login/cadastro
 // --------------------------------------------------
-function AuthAwareLayout({ children }: { children: React.ReactNode }) {
+export function AuthAwareLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/register";
 
   if (isAuthRoute) {
-    // Não mostra Sidebar nas telas de autenticação
     return <>{children}</>;
   }
 
   // Layout padrão do sistema
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6">{children}</div>
+    <div className="min-h-screen bg-background">
+      {/* ===== SIDEBAR FIXA A PARTIR DE md (≥768px) ===== */}
+      <div className="hidden md:block">
+        <aside className="fixed inset-y-0 left-0 z-40 w-64">
+          <Sidebar className="h-full" />
+        </aside>
+      </div>
+
+      {/* ===== SIDEBAR RECOLHÍVEL NO MOBILE (<768px) ===== */}
+      <div className="md:hidden">
+        <Sidebar isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      </div>
+
+      {/* ===== HEADER COM MENU (SOMENTE MOBILE) ===== */}
+      <div className="fixed inset-x-0 top-0 z-30 md:hidden">
+        <HeaderBar onMenuClick={() => setIsOpen(true)} />
+      </div>
+
+      {/* ===== CONTEÚDO PRINCIPAL =====
+          - pt-14 só no mobile por causa do HeaderBar fixo
+          - pl-64 a partir de md por causa da sidebar fixa
+      */}
+      <main className="pt-14 md:pt-0 md:pl-64">
+        <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

@@ -20,7 +20,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -148,9 +147,7 @@ export default function ExamsMedications() {
 
   const [activeTab, setActiveTab] = useState("exams");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Exam | Medication | null>(
-    null,
-  );
+  const [editingItem, setEditingItem] = useState<Exam | Medication | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Form states
@@ -347,16 +344,16 @@ export default function ExamsMedications() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
             Exames & Medicamentos
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 break-words">
             Gerencie o catálogo de exames e medicamentos
           </p>
         </div>
-        <Button className="flex items-center gap-2" onClick={openAddDialog}>
+        <Button className="flex items-center gap-2 w-full sm:w-auto" onClick={openAddDialog}>
           <Plus className="h-4 w-4" />
           Novo Item
         </Button>
@@ -386,9 +383,7 @@ export default function ExamsMedications() {
               </div>
               <div>
                 <div className="text-2xl font-bold">{medications.length}</div>
-                <div className="text-sm text-gray-600">
-                  Total de Medicamentos
-                </div>
+                <div className="text-sm text-gray-600">Total de Medicamentos</div>
               </div>
             </div>
           </CardContent>
@@ -430,29 +425,30 @@ export default function ExamsMedications() {
       {/* Main Content */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Catálogo</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
                   placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 w-64"
+                  className="pl-8 w-full"
                 />
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <Filter className="h-4 w-4 mr-2" />
                 Filtros
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
               </Button>
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
@@ -460,10 +456,7 @@ export default function ExamsMedications() {
                 <Stethoscope className="h-4 w-4" />
                 Exames ({exams.length})
               </TabsTrigger>
-              <TabsTrigger
-                value="medications"
-                className="flex items-center gap-2"
-              >
+              <TabsTrigger value="medications" className="flex items-center gap-2">
                 <Pill className="h-4 w-4" />
                 Medicamentos ({medications.length})
               </TabsTrigger>
@@ -471,146 +464,238 @@ export default function ExamsMedications() {
 
             {/* Exams Tab */}
             <TabsContent value="exams" className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Duração</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExams.map((exam) => (
-                    <TableRow key={exam.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{exam.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {exam.description}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {
-                            examCategories.find(
-                              (c) => c.value === exam.category,
-                            )?.label
-                          }
-                        </Badge>
-                      </TableCell>
-                      <TableCell>R$ {exam.price.toFixed(2)}</TableCell>
-                      <TableCell>{exam.duration} min</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            exam.active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }
-                        >
+              {/* MOBILE: cards */}
+              <div className="md:hidden space-y-3">
+                {filteredExams.length === 0 && (
+                  <div className="text-center py-6 text-gray-500">Nenhum exame encontrado</div>
+                )}
+
+                {filteredExams.map((exam) => (
+                  <div key={exam.id} className="rounded-lg border bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 break-words">{exam.name}</div>
+                        <div className="text-xs text-gray-500 break-words">{exam.description}</div>
+                      </div>
+                      <Badge variant="outline">
+                        {examCategories.find((c) => c.value === exam.category)?.label}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-gray-600">Preço</div>
+                        <div>R$ {exam.price.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Duração</div>
+                        <div>{exam.duration} min</div>
+                      </div>
+                      <div className="col-span-2">
+                        <Badge className={exam.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
                           {exam.active ? "Ativo" : "Inativo"}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(exam)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDelete(exam.id, "exam")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleEdit(exam)}>
+                        <Edit className="h-4 w-4 mr-1" /> Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => handleDelete(exam.id, "exam")}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* DESKTOP: tabela */}
+              <div className="hidden md:block border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[880px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Duração</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExams.map((exam) => (
+                        <TableRow key={exam.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium break-words">{exam.name}</div>
+                              <div className="text-sm text-gray-500 break-words">{exam.description}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {examCategories.find((c) => c.value === exam.category)?.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>R$ {exam.price.toFixed(2)}</TableCell>
+                          <TableCell>{exam.duration} min</TableCell>
+                          <TableCell>
+                            <Badge className={exam.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                              {exam.active ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEdit(exam)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDelete(exam.id, "exam")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {filteredExams.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">Nenhum exame encontrado</div>
+                )}
+              </div>
             </TabsContent>
 
             {/* Medications Tab */}
             <TabsContent value="medications" className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Princípio Ativo</TableHead>
-                    <TableHead>Dosagem</TableHead>
-                    <TableHead>Forma</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMedications.map((medication) => (
-                    <TableRow key={medication.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{medication.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {medication.manufacturer}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{medication.activeIngredient}</TableCell>
-                      <TableCell>{medication.dosage}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {
-                            medicationForms.find(
-                              (f) => f.value === medication.form,
-                            )?.label
-                          }
+              {/* MOBILE: cards */}
+              <div className="md:hidden space-y-3">
+                {filteredMedications.length === 0 && (
+                  <div className="text-center py-6 text-gray-500">Nenhum medicamento encontrado</div>
+                )}
+
+                {filteredMedications.map((med) => (
+                  <div key={med.id} className="rounded-lg border bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 break-words">{med.name}</div>
+                        <div className="text-xs text-gray-500 break-words">{med.manufacturer}</div>
+                      </div>
+                      <Badge variant="outline">
+                        {medicationForms.find((f) => f.value === med.form)?.label}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                      <div className="col-span-2">
+                        <div className="text-gray-600">Princípio ativo</div>
+                        <div className="break-words">{med.activeIngredient}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Dosagem</div>
+                        <div className="break-words">{med.dosage}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <Badge className={med.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                          {med.active ? "Ativo" : "Inativo"}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            medication.active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }
-                        >
-                          {medication.active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(medication)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() =>
-                              handleDelete(medication.id, "medication")
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => handleEdit(med)}>
+                        <Edit className="h-4 w-4 mr-1" /> Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => handleDelete(med.id, "medication")}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* DESKTOP: tabela */}
+              <div className="hidden md:block border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[880px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Princípio Ativo</TableHead>
+                        <TableHead>Dosagem</TableHead>
+                        <TableHead>Forma</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredMedications.map((medication) => (
+                        <TableRow key={medication.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium break-words">{medication.name}</div>
+                              <div className="text-sm text-gray-500 break-words">{medication.manufacturer}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="break-words">{medication.activeIngredient}</TableCell>
+                          <TableCell className="break-words">{medication.dosage}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {medicationForms.find((f) => f.value === medication.form)?.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                medication.active
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {medication.active ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEdit(medication)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDelete(medication.id, "medication")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {filteredMedications.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">Nenhum medicamento encontrado</div>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -621,20 +706,14 @@ export default function ExamsMedications() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? "Editar" : "Adicionar"}{" "}
-              {activeTab === "exams" ? "Exame" : "Medicamento"}
+              {editingItem ? "Editar" : "Adicionar"} {activeTab === "exams" ? "Exame" : "Medicamento"}
             </DialogTitle>
             <DialogDescription>
-              Preencha as informações do{" "}
-              {activeTab === "exams" ? "exame" : "medicamento"}
+              Preencha as informações do {activeTab === "exams" ? "exame" : "medicamento"}
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="space-y-4"
-          >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="exams">Exame</TabsTrigger>
               <TabsTrigger value="medications">Medicamento</TabsTrigger>
@@ -648,9 +727,8 @@ export default function ExamsMedications() {
                   <Input
                     id="examName"
                     value={examForm.name}
-                    onChange={(e) =>
-                      setExamForm((prev) => ({ ...prev, name: e.target.value }))
-                    }
+                    onChange={(e) => setExamForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -661,7 +739,7 @@ export default function ExamsMedications() {
                       setExamForm((prev) => ({ ...prev, category: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -680,13 +758,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="examDescription"
                   value={examForm.description}
-                  onChange={(e) =>
-                    setExamForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setExamForm((prev) => ({ ...prev, description: e.target.value }))}
                   rows={3}
+                  className="w-full"
                 />
               </div>
 
@@ -699,11 +773,9 @@ export default function ExamsMedications() {
                     step="0.01"
                     value={examForm.price}
                     onChange={(e) =>
-                      setExamForm((prev) => ({
-                        ...prev,
-                        price: parseFloat(e.target.value) || 0,
-                      }))
+                      setExamForm((prev) => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
                     }
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -713,11 +785,9 @@ export default function ExamsMedications() {
                     type="number"
                     value={examForm.duration}
                     onChange={(e) =>
-                      setExamForm((prev) => ({
-                        ...prev,
-                        duration: parseInt(e.target.value) || 0,
-                      }))
+                      setExamForm((prev) => ({ ...prev, duration: parseInt(e.target.value) || 0 }))
                     }
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -727,13 +797,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="examPreparation"
                   value={examForm.preparation}
-                  onChange={(e) =>
-                    setExamForm((prev) => ({
-                      ...prev,
-                      preparation: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setExamForm((prev) => ({ ...prev, preparation: e.target.value }))}
                   placeholder="Ex: Jejum de 8 horas"
+                  className="w-full"
                 />
               </div>
 
@@ -742,13 +808,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="examObservations"
                   value={examForm.observations}
-                  onChange={(e) =>
-                    setExamForm((prev) => ({
-                      ...prev,
-                      observations: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setExamForm((prev) => ({ ...prev, observations: e.target.value }))}
                   placeholder="Informações adicionais"
+                  className="w-full"
                 />
               </div>
 
@@ -756,22 +818,17 @@ export default function ExamsMedications() {
                 <Switch
                   id="examActive"
                   checked={examForm.active}
-                  onCheckedChange={(checked) =>
-                    setExamForm((prev) => ({ ...prev, active: checked }))
-                  }
+                  onCheckedChange={(checked) => setExamForm((prev) => ({ ...prev, active: checked }))}
                 />
                 <Label htmlFor="examActive">Exame ativo</Label>
               </div>
 
-              <div className="flex gap-2">
-                <Button onClick={handleSaveExam}>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleSaveExam} className="w-full sm:w-auto">
                   <Save className="h-4 w-4 mr-2" />
                   {editingItem ? "Atualizar" : "Cadastrar"} Exame
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
                   Cancelar
                 </Button>
               </div>
@@ -785,12 +842,8 @@ export default function ExamsMedications() {
                   <Input
                     id="medicationName"
                     value={medicationForm.name}
-                    onChange={(e) =>
-                      setMedicationForm((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setMedicationForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -799,11 +852,9 @@ export default function ExamsMedications() {
                     id="activeIngredient"
                     value={medicationForm.activeIngredient}
                     onChange={(e) =>
-                      setMedicationForm((prev) => ({
-                        ...prev,
-                        activeIngredient: e.target.value,
-                      }))
+                      setMedicationForm((prev) => ({ ...prev, activeIngredient: e.target.value }))
                     }
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -814,13 +865,9 @@ export default function ExamsMedications() {
                   <Input
                     id="dosage"
                     value={medicationForm.dosage}
-                    onChange={(e) =>
-                      setMedicationForm((prev) => ({
-                        ...prev,
-                        dosage: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setMedicationForm((prev) => ({ ...prev, dosage: e.target.value }))}
                     placeholder="Ex: 500mg"
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -831,7 +878,7 @@ export default function ExamsMedications() {
                       setMedicationForm((prev) => ({ ...prev, form: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -848,12 +895,8 @@ export default function ExamsMedications() {
                   <Input
                     id="manufacturer"
                     value={medicationForm.manufacturer}
-                    onChange={(e) =>
-                      setMedicationForm((prev) => ({
-                        ...prev,
-                        manufacturer: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setMedicationForm((prev) => ({ ...prev, manufacturer: e.target.value }))}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -863,13 +906,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="medicationDescription"
                   value={medicationForm.description}
-                  onChange={(e) =>
-                    setMedicationForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setMedicationForm((prev) => ({ ...prev, description: e.target.value }))}
                   rows={3}
+                  className="w-full"
                 />
               </div>
 
@@ -878,13 +917,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="contraindications"
                   value={medicationForm.contraindications}
-                  onChange={(e) =>
-                    setMedicationForm((prev) => ({
-                      ...prev,
-                      contraindications: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setMedicationForm((prev) => ({ ...prev, contraindications: e.target.value }))}
                   rows={2}
+                  className="w-full"
                 />
               </div>
 
@@ -893,13 +928,9 @@ export default function ExamsMedications() {
                 <Textarea
                   id="sideEffects"
                   value={medicationForm.sideEffects}
-                  onChange={(e) =>
-                    setMedicationForm((prev) => ({
-                      ...prev,
-                      sideEffects: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setMedicationForm((prev) => ({ ...prev, sideEffects: e.target.value }))}
                   rows={2}
+                  className="w-full"
                 />
               </div>
 
@@ -907,22 +938,17 @@ export default function ExamsMedications() {
                 <Switch
                   id="medicationActive"
                   checked={medicationForm.active}
-                  onCheckedChange={(checked) =>
-                    setMedicationForm((prev) => ({ ...prev, active: checked }))
-                  }
+                  onCheckedChange={(checked) => setMedicationForm((prev) => ({ ...prev, active: checked }))}
                 />
                 <Label htmlFor="medicationActive">Medicamento ativo</Label>
               </div>
 
-              <div className="flex gap-2">
-                <Button onClick={handleSaveMedication}>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleSaveMedication} className="w-full sm:w-auto">
                   <Save className="h-4 w-4 mr-2" />
                   {editingItem ? "Atualizar" : "Cadastrar"} Medicamento
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
                   Cancelar
                 </Button>
               </div>

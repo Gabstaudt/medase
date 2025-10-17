@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +19,6 @@ import {
   ArrowLeft,
   User,
   Phone,
-  Mail,
   MapPin,
   Heart,
   AlertTriangle,
@@ -33,33 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const states = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ];
 
 export default function PatientForm() {
@@ -137,10 +109,7 @@ export default function PatientForm() {
 
     try {
       if (isEditing && id) {
-        const updatedPatient = store.updatePatient(
-          id,
-          formData as Partial<Patient>,
-        );
+        const updatedPatient = store.updatePatient(id, formData as Partial<Patient>);
         if (updatedPatient) {
           toast({
             title: "Paciente atualizado",
@@ -150,7 +119,7 @@ export default function PatientForm() {
         }
       } else {
         const newPatient = store.addPatient(
-          formData as Omit<Patient, "id" | "createdAt" | "updatedAt">,
+          formData as Omit<Patient, "id" | "createdAt" | "updatedAt">
         );
         toast({
           title: "Paciente cadastrado",
@@ -210,9 +179,7 @@ export default function PatientForm() {
       ...prev,
       clinicalData: {
         ...prev.clinicalData,
-        medications: prev.clinicalData.medications.filter(
-          (_, i) => i !== index,
-        ),
+        medications: prev.clinicalData.medications.filter((_, i) => i !== index),
       },
     }));
   };
@@ -223,10 +190,7 @@ export default function PatientForm() {
         ...prev,
         clinicalData: {
           ...prev.clinicalData,
-          medicalHistory: [
-            ...prev.clinicalData.medicalHistory,
-            newCondition.trim(),
-          ],
+          medicalHistory: [...prev.clinicalData.medicalHistory, newCondition.trim()],
         },
       }));
       setNewCondition("");
@@ -238,9 +202,7 @@ export default function PatientForm() {
       ...prev,
       clinicalData: {
         ...prev.clinicalData,
-        medicalHistory: prev.clinicalData.medicalHistory.filter(
-          (_, i) => i !== index,
-        ),
+        medicalHistory: prev.clinicalData.medicalHistory.filter((_, i) => i !== index),
       },
     }));
   };
@@ -248,23 +210,22 @@ export default function PatientForm() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate("/patients")}
+          className="w-full sm:w-auto"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
             {isEditing ? "Editar Paciente" : "Novo Paciente"}
           </h1>
           <p className="text-gray-600 mt-1">
-            {isEditing
-              ? "Atualize as informações do paciente"
-              : "Cadastre um novo paciente no sistema"}
+            {isEditing ? "Atualize as informações do paciente" : "Cadastre um novo paciente no sistema"}
           </p>
         </div>
       </div>
@@ -285,9 +246,7 @@ export default function PatientForm() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   required
                 />
               </div>
@@ -296,9 +255,7 @@ export default function PatientForm() {
                 <Input
                   id="cpf"
                   value={formData.cpf}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, cpf: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, cpf: e.target.value }))}
                   placeholder="000.000.000-00"
                   required
                 />
@@ -312,12 +269,7 @@ export default function PatientForm() {
                   id="birthDate"
                   type="date"
                   value={formData.birthDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      birthDate: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, birthDate: e.target.value }))}
                   required
                 />
               </div>
@@ -376,9 +328,7 @@ export default function PatientForm() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                   required
                 />
               </div>
@@ -387,9 +337,7 @@ export default function PatientForm() {
                 <Input
                   id="phone"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
                   placeholder="(11) 99999-9999"
                   required
                 />
@@ -561,28 +509,28 @@ export default function PatientForm() {
             {/* Allergies */}
             <div>
               <Label>Alergias</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
                 <Input
                   value={newAllergy}
                   onChange={(e) => setNewAllergy(e.target.value)}
                   placeholder="Digite uma alergia"
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addAllergy())
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addAllergy();
+                    }
+                  }}
+                  className="sm:flex-1"
                 />
-                <Button type="button" onClick={addAllergy} size="sm">
+                <Button type="button" onClick={addAllergy} size="sm" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.clinicalData.allergies.map((allergy, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
+                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
-                    {allergy}
+                    <span className="break-words">{allergy}</span>
                     <Button
                       type="button"
                       size="sm"
@@ -600,27 +548,27 @@ export default function PatientForm() {
             {/* Medications */}
             <div>
               <Label>Medicamentos</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
                 <Input
                   value={newMedication}
                   onChange={(e) => setNewMedication(e.target.value)}
                   placeholder="Digite um medicamento"
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addMedication())
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addMedication();
+                    }
+                  }}
+                  className="sm:flex-1"
                 />
-                <Button type="button" onClick={addMedication} size="sm">
+                <Button type="button" onClick={addMedication} size="sm" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.clinicalData.medications.map((medication, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="flex items-center gap-1"
-                  >
-                    {medication}
+                  <Badge key={index} variant="outline" className="flex items-center gap-1">
+                    <span className="break-words">{medication}</span>
                     <Button
                       type="button"
                       size="sm"
@@ -638,40 +586,38 @@ export default function PatientForm() {
             {/* Medical History */}
             <div>
               <Label>Histórico Médico</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
                 <Input
                   value={newCondition}
                   onChange={(e) => setNewCondition(e.target.value)}
                   placeholder="Digite uma condição médica"
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addCondition())
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCondition();
+                    }
+                  }}
+                  className="sm:flex-1"
                 />
-                <Button type="button" onClick={addCondition} size="sm">
+                <Button type="button" onClick={addCondition} size="sm" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
-                {formData.clinicalData.medicalHistory.map(
-                  (condition, index) => (
-                    <Badge
-                      key={index}
-                      variant="destructive"
-                      className="flex items-center gap-1"
+                {formData.clinicalData.medicalHistory.map((condition, index) => (
+                  <Badge key={index} variant="destructive" className="flex items-center gap-1">
+                    <span className="break-words">{condition}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-4 w-4 p-0 hover:bg-transparent text-white"
+                      onClick={() => removeCondition(index)}
                     >
-                      {condition}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-4 w-4 p-0 hover:bg-transparent text-white"
-                        onClick={() => removeCondition(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ),
-                )}
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
               </div>
             </div>
 
@@ -683,14 +629,12 @@ export default function PatientForm() {
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    clinicalData: {
-                      ...prev.clinicalData,
-                      observations: e.target.value,
-                    },
+                    clinicalData: { ...prev.clinicalData, observations: e.target.value },
                   }))
                 }
                 placeholder="Observações gerais sobre o paciente..."
                 rows={3}
+                className="break-words"
               />
             </div>
           </CardContent>
@@ -714,10 +658,7 @@ export default function PatientForm() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      emergencyContact: {
-                        ...prev.emergencyContact,
-                        name: e.target.value,
-                      },
+                      emergencyContact: { ...prev.emergencyContact, name: e.target.value },
                     }))
                   }
                 />
@@ -730,10 +671,7 @@ export default function PatientForm() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      emergencyContact: {
-                        ...prev.emergencyContact,
-                        relationship: e.target.value,
-                      },
+                      emergencyContact: { ...prev.emergencyContact, relationship: e.target.value },
                     }))
                   }
                 />
@@ -746,10 +684,7 @@ export default function PatientForm() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      emergencyContact: {
-                        ...prev.emergencyContact,
-                        phone: e.target.value,
-                      },
+                      emergencyContact: { ...prev.emergencyContact, phone: e.target.value },
                     }))
                   }
                 />
@@ -759,23 +694,20 @@ export default function PatientForm() {
         </Card>
 
         {/* Submit Button */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <Button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
           >
             <Save className="h-4 w-4" />
-            {loading
-              ? "Salvando..."
-              : isEditing
-                ? "Atualizar Paciente"
-                : "Cadastrar Paciente"}
+            {loading ? "Salvando..." : isEditing ? "Atualizar Paciente" : "Cadastrar Paciente"}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => navigate("/patients")}
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
