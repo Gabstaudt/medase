@@ -20,7 +20,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 const navigationItems = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
     description: "Visão geral do sistema",
   },
@@ -71,13 +71,13 @@ export function Sidebar({ className }: SidebarProps) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Here you would typically clear authentication tokens, user data, etc.
     if (window.confirm("Tem certeza que deseja sair do sistema?")) {
-      // Clear any stored auth data
-      localStorage.removeItem("medase-auth");
+      // Limpa a MESMA chave usada no Login
+      localStorage.removeItem("medase:user");
+      // Se houver outras flags, limpe aqui também (ex.: tokens)
       sessionStorage.clear();
 
-      // Redirect to login or home page
+      // Redireciona para a tela de login
       window.location.href = "/login";
     }
   };
