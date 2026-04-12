@@ -1,0 +1,398 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { store } from "@/lib/store";
+import { DoctorAppointment, Patient } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import {
+  CalendarDays,
+  Clock3,
+  Mail,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
+
+type SecretarySnapshot = ReturnType<typeof store.getSecretaryDashboardData>;
+
+const appointmentStatusStyles: Record<DoctorAppointment["status"], string> = {
+  confirmed: "bg-emerald-100 text-emerald-800",
+  waiting: "bg-amber-100 text-amber-800",
+  cancelled: "bg-rose-100 text-rose-800",
+};
+
+const appointmentStatusLabels: Record<DoctorAppointment["status"], string> = {
+  confirmed: "Confirmada",
+  waiting: "Aguardando",
+  cancelled: "Cancelada",
+};
+
+export default function SecretaryDashboard() {
+  const { toast } = useToast();
+  const [snapshot, setSnapshot] = useState<SecretarySnapshot | null>(null);
+
+  const refreshSnapshot = () => {
+    setSnapshot(store.getSecretaryDashboardData());
+  };
+
+  useEffect(() => {
+    refreshSnapshot();
+  }, []);
+
+  const groupedAppointments = useMemo(() => {
+    if (!snapshot) return [];
+
+    const groups = new Map<string, DoctorAppointment[]>();
+
+    for (const appointment of snapshot.appointments) {
+      const dateKey = new Date(appointment.startsAt).toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      });
+      const currentGroup = groups.get(dateKey) ?? [];
+      currentGroup.push(appointment);
+      groups.set(dateKey, currentGroup);
+    }
+
+    return Array.from(groups.entries());
+  }, [snapshot]);
+
+  const handleRemovePatient = (patientId: string, patientName: string) => {
+    if (!window.confirm(`Remover ${patientName} da base de pacientes?`)) return;
+
+    const deleted = store.deletePatient(patientId);
+    if (!deleted) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o paciente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    refreshSnapshot();
+    toast({
+      title: "Paciente removido",
+      description: `${patientName} foi removido com sucesso.`,
+    });
+  };
+
+  const handleCancelAppointment = (appointmentId: string) => {
+    const removed = store.deleteAppointment(appointmentId);
+    if (!removed) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o agendamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    refreshSnapshot();
+    toast({
+      title: "Agendamento removido",
+      description: "A agenda do médico foi atualizada.",
+    });
+  };
+
+  if (!snapshot) {
+    return <div>Carregando...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Área da Secretária
+          </h1>
+          <p className="mt-1 text-gray-600">
+            Gerencie a agenda da médica e os dados essenciais dos pacientes.
+          </p>
+        </div>
+        <Link to="/patients/new" className="w-full md:w-auto">
+          <Button className="flex w-full items-center gap-2 md:w-auto">
+            <UserPlus className="h-4 w-4" />
+            Cadastrar paciente
+          </Button>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard
+          title="Pacientes"
+          value={snapshot.totalPatients}
+          description="Pacientes vinculados"
+          icon={<Users className="h-5 w-5 text-primary" />}
+        />
+        <StatCard
+          title="Ativos"
+          value={snapshot.activePatients}
+          description="Em acompanhamento"
+          icon={<Users className="h-5 w-5 text-emerald-600" />}
+        />
+        <StatCard
+          title="Agenda hoje"
+          value={snapshot.appointmentsToday}
+          description="Consultas do dia"
+          icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
+        />
+        <StatCard
+          title="Em espera"
+          value={snapshot.waitingAppointments}
+          description="Pacientes aguardando"
+          icon={<Clock3 className="h-5 w-5 text-amber-600" />}
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Agenda da médica</CardTitle>
+            <p className="mt-1 text-sm text-gray-600">
+              A secretária acompanha e ajusta somente os horários da agenda.
+            </p>
+          </div>
+          <Badge variant="outline">{snapshot.appointments.length} agendamentos</Badge>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {groupedAppointments.map(([dateLabel, appointments]) => (
+            <div key={dateLabel} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold capitalize text-gray-900">{dateLabel}</h3>
+              </div>
+              <div className="grid gap-3">
+                {appointments.map((appointment) => {
+                  const patient = snapshot.patients.find(
+                    (item) => item.id === appointment.patientId,
+                  );
+
+                  return (
+                    <div
+                      key={appointment.id}
+                      className="flex flex-col gap-3 rounded-xl border p-4 lg:flex-row lg:items-center lg:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-gray-900">
+                            {patient?.name ?? "Paciente não encontrado"}
+                          </span>
+                          <Badge className={appointmentStatusStyles[appointment.status]}>
+                            {appointmentStatusLabels[appointment.status]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {appointment.doctorName} • {appointment.specialty}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(appointment.startsAt).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {appointment.notes ? ` • ${appointment.notes}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        {patient && (
+                          <Link to={`/patients/${patient.id}`} className="w-full sm:w-auto">
+                            <Button variant="outline" className="w-full sm:w-auto">
+                              Ver paciente
+                            </Button>
+                          </Link>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
+                          onClick={() => handleCancelAppointment(appointment.id)}
+                        >
+                          Retirar da agenda
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Pacientes cadastrados</CardTitle>
+            <p className="mt-1 text-sm text-gray-600">
+              Visualização restrita aos dados pessoais e clínicos básicos.
+            </p>
+          </div>
+          <Link to="/patients/new" className="w-full sm:w-auto">
+            <Button variant="outline" className="flex w-full items-center gap-2 sm:w-auto">
+              <Plus className="h-4 w-4" />
+              Novo paciente
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="hidden overflow-hidden rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Paciente</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Nascimento</TableHead>
+                  <TableHead>Tipo sanguíneo</TableHead>
+                  <TableHead>Alergias</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {snapshot.patients.map((patient) => (
+                  <SecretaryPatientRow
+                    key={patient.id}
+                    patient={patient}
+                    onRemove={handleRemovePatient}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {snapshot.patients.map((patient) => (
+              <div key={patient.id} className="rounded-xl border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{patient.name}</h3>
+                    <p className="text-sm text-gray-600">{patient.email}</p>
+                  </div>
+                  <Badge variant="outline">{patient.clinicalData.bloodType || "N/I"}</Badge>
+                </div>
+                <div className="mt-3 space-y-1 text-sm text-gray-600">
+                  <p>CPF: {patient.cpf}</p>
+                  <p>
+                    Nascimento: {new Date(patient.birthDate).toLocaleDateString("pt-BR")}
+                  </p>
+                  <p>
+                    Alergias:{" "}
+                    {patient.clinicalData.allergies.length > 0
+                      ? patient.clinicalData.allergies.join(", ")
+                      : "Nenhuma"}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <Link to={`/patients/${patient.id}`} className="w-full">
+                    <Button variant="outline" className="w-full">
+                      Ver dados
+                    </Button>
+                  </Link>
+                  <Link to={`/patients/${patient.id}/edit`} className="w-full">
+                    <Button variant="outline" className="w-full">
+                      Editar
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => handleRemovePatient(patient.id, patient.name)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remover paciente
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  description,
+  icon,
+}: {
+  title: string;
+  value: number;
+  description: string;
+  icon: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="rounded-lg bg-slate-50 p-2">{icon}</div>
+        <div>
+          <div className="text-sm text-gray-600">{title}</div>
+          <div className="text-2xl font-bold text-gray-900">{value}</div>
+          <div className="text-xs text-gray-500">{description}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SecretaryPatientRow({
+  patient,
+  onRemove,
+}: {
+  patient: Patient;
+  onRemove: (patientId: string, patientName: string) => void;
+}) {
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{patient.name}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-gray-400" />
+          <span>{patient.email}</span>
+        </div>
+      </TableCell>
+      <TableCell>{patient.cpf}</TableCell>
+      <TableCell>{new Date(patient.birthDate).toLocaleDateString("pt-BR")}</TableCell>
+      <TableCell>{patient.clinicalData.bloodType || "Não informado"}</TableCell>
+      <TableCell>
+        {patient.clinicalData.allergies.length > 0
+          ? patient.clinicalData.allergies.join(", ")
+          : "Nenhuma"}
+      </TableCell>
+      <TableCell>
+        <div className="flex justify-end gap-2">
+          <Link to={`/patients/${patient.id}`}>
+            <Button size="sm" variant="outline">
+              Ver
+            </Button>
+          </Link>
+          <Link to={`/patients/${patient.id}/edit`}>
+            <Button size="sm" variant="outline">
+              Editar
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50"
+            onClick={() => onRemove(patient.id, patient.name)}
+          >
+            Remover
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}

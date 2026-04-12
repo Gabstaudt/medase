@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { getDefaultRouteForUser } from "@/lib/auth";
 
 const registerSchema = z.object({
   email: z.string().email("Informe um e-mail válido"),
@@ -30,9 +31,14 @@ export function Register() {
   } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data: RegisterForm) => {
-    const fakeUser = { id: 1, name: data.username, email: data.email };
+    const fakeUser = {
+      id: 1,
+      name: data.username,
+      email: data.email,
+      role: "ADMIN",
+    };
     localStorage.setItem("medase:user", JSON.stringify(fakeUser));
-    navigate("/dashboard");
+    navigate(getDefaultRouteForUser());
   };
 
   return (

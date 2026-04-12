@@ -32,6 +32,25 @@ export interface Patient {
   status: "active" | "inactive";
 }
 
+export type UserRole = "ADMIN" | "SECRETARIA";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface DoctorAppointment {
+  id: string;
+  patientId: string;
+  doctorName: string;
+  specialty: string;
+  startsAt: string;
+  status: "confirmed" | "waiting" | "cancelled";
+  notes?: string;
+}
+
 export interface AIAnalysis {
   id: string;
   patientId: string;
