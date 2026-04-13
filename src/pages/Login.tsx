@@ -104,12 +104,6 @@ export default function Login() {
                 cuidados mais humanos.
               </p>
 
-              <div className="mx-auto mb-6 w-full max-w-md rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-900">
-                <p className="font-medium">Acesso de teste</p>
-                <p>Admin: admin@medase.com / admin123</p>
-                <p>Secretaria: secretaria@medase.com / secretaria123</p>
-              </div>
-
               <form
                 noValidate
                 onSubmit={handleSubmit(onSubmit)}
