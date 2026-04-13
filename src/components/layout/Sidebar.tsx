@@ -63,9 +63,9 @@ const secretaryNavigationItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Cadastrar Paciente",
-    href: "/patients/new",
-    icon: UserPlus,
+    title: "Pacientes",
+    href: "/secretary/patients",
+    icon: Users,
   },
 ];
 

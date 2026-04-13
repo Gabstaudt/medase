@@ -10,14 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { store } from "@/lib/store";
 import { DoctorAppointment, Patient } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -26,9 +18,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Mail,
-  Plus,
-  Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -92,26 +81,6 @@ export default function SecretaryDashboard() {
       endsAt: addMinutesToIsoString(appointment.startsAt, 60),
     }));
   }, [snapshot]);
-
-  const handleRemovePatient = (patientId: string, patientName: string) => {
-    if (!window.confirm(`Remover ${patientName} da base de pacientes?`)) return;
-
-    const deleted = store.deletePatient(patientId);
-    if (!deleted) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o paciente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    refreshSnapshot();
-    toast({
-      title: "Paciente removido",
-      description: `${patientName} foi removido com sucesso.`,
-    });
-  };
 
   const handleCancelAppointment = (appointmentId: string) => {
     const removed = store.deleteAppointment(appointmentId);
@@ -329,94 +298,6 @@ export default function SecretaryDashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Pacientes cadastrados</CardTitle>
-            <p className="mt-1 text-sm text-gray-600">
-              Visualização restrita aos dados pessoais e clínicos básicos.
-            </p>
-          </div>
-          <Link to="/patients/new" className="w-full sm:w-auto">
-            <Button variant="outline" className="flex w-full items-center gap-2 sm:w-auto">
-              <Plus className="h-4 w-4" />
-              Novo paciente
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          <div className="hidden overflow-hidden rounded-lg border md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead>Nascimento</TableHead>
-                  <TableHead>Tipo sanguíneo</TableHead>
-                  <TableHead>Alergias</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {snapshot.patients.map((patient) => (
-                  <SecretaryPatientRow
-                    key={patient.id}
-                    patient={patient}
-                    onRemove={handleRemovePatient}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="space-y-3 md:hidden">
-            {snapshot.patients.map((patient) => (
-              <div key={patient.id} className="rounded-xl border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{patient.name}</h3>
-                    <p className="text-sm text-gray-600">{patient.email}</p>
-                  </div>
-                  <Badge variant="outline">{patient.clinicalData.bloodType || "N/I"}</Badge>
-                </div>
-                <div className="mt-3 space-y-1 text-sm text-gray-600">
-                  <p>CPF: {patient.cpf}</p>
-                  <p>
-                    Nascimento: {new Date(patient.birthDate).toLocaleDateString("pt-BR")}
-                  </p>
-                  <p>
-                    Alergias:{" "}
-                    {patient.clinicalData.allergies.length > 0
-                      ? patient.clinicalData.allergies.join(", ")
-                      : "Nenhuma"}
-                  </p>
-                </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <Link to={`/patients/${patient.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      Ver dados
-                    </Button>
-                  </Link>
-                  <Link to={`/patients/${patient.id}/edit`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      Editar
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    className="w-full border-red-200 text-red-600 hover:bg-red-50"
-                    onClick={() => handleRemovePatient(patient.id, patient.name)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover paciente
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -705,56 +586,6 @@ function StatCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function SecretaryPatientRow({
-  patient,
-  onRemove,
-}: {
-  patient: Patient;
-  onRemove: (patientId: string, patientName: string) => void;
-}) {
-  return (
-    <TableRow>
-      <TableCell className="font-medium">{patient.name}</TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-gray-400" />
-          <span>{patient.email}</span>
-        </div>
-      </TableCell>
-      <TableCell>{patient.cpf}</TableCell>
-      <TableCell>{new Date(patient.birthDate).toLocaleDateString("pt-BR")}</TableCell>
-      <TableCell>{patient.clinicalData.bloodType || "Não informado"}</TableCell>
-      <TableCell>
-        {patient.clinicalData.allergies.length > 0
-          ? patient.clinicalData.allergies.join(", ")
-          : "Nenhuma"}
-      </TableCell>
-      <TableCell>
-        <div className="flex justify-end gap-2">
-          <Link to={`/patients/${patient.id}`}>
-            <Button size="sm" variant="outline">
-              Ver
-            </Button>
-          </Link>
-          <Link to={`/patients/${patient.id}/edit`}>
-            <Button size="sm" variant="outline">
-              Editar
-            </Button>
-          </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-red-200 text-red-600 hover:bg-red-50"
-            onClick={() => onRemove(patient.id, patient.name)}
-          >
-            Remover
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
   );
 }
 

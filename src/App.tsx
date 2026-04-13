@@ -26,6 +26,7 @@ import NotFound from "./pages/NotFound";
 import { Register } from "./pages/Register";
 import Login from "./pages/Login";
 import SecretaryDashboard from "./pages/SecretaryDashboard";
+import SecretaryPatients from "./pages/SecretaryPatients";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["SECRETARIA"]}>
                   <SecretaryDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/secretary/patients"
+              element={
+                <ProtectedRoute allowedRoles={["SECRETARIA"]}>
+                  <SecretaryPatients />
                 </ProtectedRoute>
               }
             />
