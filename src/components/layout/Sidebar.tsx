@@ -4,8 +4,8 @@ import { Separator } from "@/components/ui/separator";
 import { getCurrentUser, isSecretary, logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
-  AlertCircle,
   Brain,
+  CalendarDays,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -28,6 +28,11 @@ const adminNavigationItems = [
     title: "Pacientes",
     href: "/patients",
     icon: Users,
+  },
+  {
+    title: "Agenda",
+    href: "/agenda",
+    icon: CalendarDays,
   },
   {
     title: "Novo Paciente",
@@ -145,41 +150,6 @@ export function Sidebar({ className, isOpen, onClose }: SidebarProps) {
                 </Link>
               );
             })}
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="space-y-2 px-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Status Rápido
-            </h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  {secretaryMode ? "Pacientes ativos" : "Pacientes ativos"}
-                </span>
-                <span className="font-medium text-primary">
-                  {secretaryMode ? "24" : "124"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  {secretaryMode ? "Agenda do dia" : "Análises IA (mês)"}
-                </span>
-                <span className="font-medium text-primary">
-                  {secretaryMode ? "6" : "18"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <AlertCircle className="h-3 w-3 text-amber-500" />
-                <span className="text-gray-600">
-                  {secretaryMode ? "Pacientes em espera" : "Exames pendentes"}
-                </span>
-                <span className="font-medium text-amber-600">
-                  {secretaryMode ? "2" : "7"}
-                </span>
-              </div>
-            </div>
           </div>
         </ScrollArea>
 

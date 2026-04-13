@@ -22,6 +22,7 @@ import AIDetection from "./pages/AIDetection";
 import Settings from "./pages/Settings";
 import DoctorProfile from "./pages/DoctorProfile";
 import ExamsMedications from "./pages/ExamsMedications";
+import DoctorAgenda from "./pages/DoctorAgenda";
 import NotFound from "./pages/NotFound";
 import { Register } from "./pages/Register";
 import Login from "./pages/Login";
@@ -74,6 +75,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <PatientList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agenda"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <DoctorAgenda />
                 </ProtectedRoute>
               }
             />
