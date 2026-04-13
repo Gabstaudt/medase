@@ -1,12 +1,27 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { AuthUser, UserRole } from "@/lib/types";
 import {
   Settings as SettingsIcon,
   Bell,
@@ -19,11 +34,36 @@ import {
   Upload,
   RefreshCw,
   AlertTriangle,
+  PlusCircle,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { toast } = useToast();
+  const [users, setUsers] = useState<Array<AuthUser & { active: boolean }>>([
+    {
+      id: 1,
+      name: "Admin",
+      email: "admin@medase.com",
+      role: "ADMIN",
+      active: true,
+    },
+    {
+      id: 2,
+      name: "Ana Secretaria",
+      email: "secretaria@medase.com",
+      role: "SECRETARIA",
+      active: true,
+    },
+  ]);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [userForm, setUserForm] = useState({
+    name: "",
+    email: "",
+    role: "SECRETARIA" as UserRole,
+  });
   const [settings, setSettings] = useState({
     profile: {
       doctorName: "Dr. Admin",
@@ -71,6 +111,82 @@ export default function Settings() {
       title: "Importação de dados",
       description: "Funcionalidade será implementada em breve.",
     });
+  };
+
+  const openNewUserDialog = () => {
+    setEditingUserId(null);
+    setUserForm({
+      name: "",
+      email: "",
+      role: "SECRETARIA",
+    });
+    setIsUserDialogOpen(true);
+  };
+
+  const openEditUserDialog = (user: AuthUser & { active: boolean }) => {
+    setEditingUserId(user.id);
+    setUserForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+    setIsUserDialogOpen(true);
+  };
+
+  const handleSaveUser = () => {
+    if (!userForm.name || !userForm.email) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Informe nome e email do usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingUserId !== null) {
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === editingUserId
+            ? { ...user, name: userForm.name, email: userForm.email, role: userForm.role }
+            : user,
+        ),
+      );
+      toast({
+        title: "Usuário atualizado",
+        description: "As informações do usuário foram salvas.",
+      });
+    } else {
+      setUsers((current) => [
+        {
+          id: Date.now(),
+          name: userForm.name,
+          email: userForm.email,
+          role: userForm.role,
+          active: true,
+        },
+        ...current,
+      ]);
+      toast({
+        title: "Usuário criado",
+        description: "O novo usuário foi adicionado ao sistema.",
+      });
+    }
+
+    setIsUserDialogOpen(false);
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    setUsers((current) => current.filter((user) => user.id !== userId));
+    toast({
+      title: "Usuário removido",
+      description: "O usuário foi removido com sucesso.",
+    });
+  };
+
+  const handleToggleUserStatus = (userId: number, active: boolean) => {
+    setUsers((current) =>
+      current.map((user) => (user.id === userId ? { ...user, active } : user)),
+    );
   };
 
   return (
@@ -431,6 +547,61 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Usuários do sistema
+              </CardTitle>
+              <Button onClick={openNewUserDialog}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Novo usuário
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex flex-col gap-3 rounded-xl border p-4 lg:flex-row lg:items-center lg:justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-gray-900">{user.name}</p>
+                      <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
+                        {user.role === "ADMIN" ? "Administrador" : "Secretária"}
+                      </Badge>
+                      <Badge variant="outline">{user.active ? "Ativo" : "Inativo"}</Badge>
+                    </div>
+                    <p className="text-sm text-gray-600">{user.email}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`active-${user.id}`} className="text-sm">
+                        Ativo
+                      </Label>
+                      <Switch
+                        id={`active-${user.id}`}
+                        checked={user.active}
+                        onCheckedChange={(checked) => handleToggleUserStatus(user.id, checked)}
+                      />
+                    </div>
+                    <Button variant="outline" onClick={() => openEditUserDialog(user)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           {/* Save Button */}
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} className="flex items-center gap-2">
@@ -542,6 +713,64 @@ export default function Settings() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingUserId !== null ? "Editar usuário" : "Novo usuário"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="user-name">Nome</Label>
+              <Input
+                id="user-name"
+                value={userForm.name}
+                onChange={(event) =>
+                  setUserForm((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-email">Email</Label>
+              <Input
+                id="user-email"
+                type="email"
+                value={userForm.email}
+                onChange={(event) =>
+                  setUserForm((current) => ({ ...current, email: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-role">Perfil</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value: UserRole) =>
+                  setUserForm((current) => ({ ...current, role: value }))
+                }
+              >
+                <SelectTrigger id="user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                  <SelectItem value="SECRETARIA">Secretária</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveUser}>
+              Salvar usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
