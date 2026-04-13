@@ -56,6 +56,7 @@ export default function SecretaryDashboard() {
   const [snapshot, setSnapshot] = useState<SecretarySnapshot | null>(null);
   const [referenceDate, setReferenceDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState<CalendarView>("month");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   const refreshSnapshot = () => {
     setSnapshot(store.getSecretaryDashboardData());
@@ -128,6 +129,14 @@ export default function SecretaryDashboard() {
       title: "Agendamento removido",
       description: "A agenda do médico foi atualizada.",
     });
+  };
+
+  const handleCalendarAppointmentClick = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    const element = document.getElementById(`appointment-${appointmentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   };
 
   if (!snapshot) {
@@ -237,6 +246,7 @@ export default function SecretaryDashboard() {
             referenceDate={referenceDate}
             appointments={calendarAppointments}
             patients={snapshot.patients}
+            onAppointmentClick={handleCalendarAppointmentClick}
           />
         </CardContent>
       </Card>
@@ -267,7 +277,12 @@ export default function SecretaryDashboard() {
                   return (
                     <div
                       key={appointment.id}
-                      className="flex flex-col gap-3 rounded-xl border p-4 lg:flex-row lg:items-center lg:justify-between"
+                      id={`appointment-${appointment.id}`}
+                      className={`flex flex-col gap-3 rounded-xl border p-4 transition lg:flex-row lg:items-center lg:justify-between ${
+                        selectedAppointmentId === appointment.id
+                          ? "border-[#1A73E8] ring-2 ring-[#1A73E8]/15"
+                          : ""
+                      }`}
                     >
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -411,11 +426,13 @@ function CalendarShell({
   referenceDate,
   appointments,
   patients,
+  onAppointmentClick,
 }: {
   view: CalendarView;
   referenceDate: Date;
   appointments: CalendarAppointment[];
   patients: Patient[];
+  onAppointmentClick: (appointmentId: string) => void;
 }) {
   if (view === "month") {
     return (
@@ -423,6 +440,7 @@ function CalendarShell({
         referenceDate={referenceDate}
         appointments={appointments}
         patients={patients}
+        onAppointmentClick={onAppointmentClick}
       />
     );
   }
@@ -433,6 +451,7 @@ function CalendarShell({
       referenceDate={referenceDate}
       appointments={appointments}
       patients={patients}
+      onAppointmentClick={onAppointmentClick}
     />
   );
 }
@@ -441,10 +460,12 @@ function MonthCalendar({
   referenceDate,
   appointments,
   patients,
+  onAppointmentClick,
 }: {
   referenceDate: Date;
   appointments: CalendarAppointment[];
   patients: Patient[];
+  onAppointmentClick: (appointmentId: string) => void;
 }) {
   const monthDays = getMonthGrid(referenceDate);
   const visibleMonth = referenceDate.getMonth();
@@ -508,14 +529,17 @@ function MonthCalendar({
                       <div className="space-y-1.5">
                         {dayAppointments.slice(0, 4).map((appointment) => {
                           const patient = patients.find((item) => item.id === appointment.patientId);
+                          const calendarStatus = getCalendarStatus(appointment);
                           return (
-                            <div
+                            <button
+                              type="button"
                               key={appointment.id}
-                              className="truncate rounded-md bg-[#E8F0FE] px-2 py-1 text-xs font-medium text-[#174EA6]"
-                              title={`${formatEventTime(appointment.startsAt)} ${patient?.name ?? "Paciente"}`}
+                              className={`block w-full truncate rounded-md px-2 py-1 text-left text-xs font-medium transition hover:brightness-95 ${calendarStatus.monthClassName}`}
+                              title={`${formatEventTime(appointment.startsAt)} ${patient?.name ?? "Paciente"} - ${calendarStatus.label}`}
+                              onClick={() => onAppointmentClick(appointment.id)}
                             >
                               {formatEventTime(appointment.startsAt)} {patient?.name ?? "Paciente"}
-                            </div>
+                            </button>
                           );
                         })}
                         {dayAppointments.length > 4 && (
@@ -541,11 +565,13 @@ function TimeGridCalendar({
   referenceDate,
   appointments,
   patients,
+  onAppointmentClick,
 }: {
   view: Extract<CalendarView, "day" | "week">;
   referenceDate: Date;
   appointments: CalendarAppointment[];
   patients: Patient[];
+  onAppointmentClick: (appointmentId: string) => void;
 }) {
   const days = view === "day" ? [startOfDay(referenceDate)] : getWeekDaysSunday(referenceDate);
   const startHour = 7;
@@ -622,28 +648,31 @@ function TimeGridCalendar({
               ))}
               {dayAppointments.map((item) => {
                 const patient = patients.find((entry) => entry.id === item.appointment.patientId);
+                const calendarStatus = getCalendarStatus(item.appointment);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={item.appointment.id}
-                    className="absolute overflow-hidden rounded-xl border border-[#C6DAFC] bg-[#E8F0FE] px-3 py-2 text-[#174EA6] shadow-sm"
+                    className={`absolute overflow-hidden rounded-xl border px-3 py-2 text-left shadow-sm transition hover:brightness-95 ${calendarStatus.gridClassName}`}
                     style={{
                       top: item.top,
                       height: item.height,
                       left: `calc(${(item.column / item.totalColumns) * 100}% + 6px)`,
                       width: `calc(${100 / item.totalColumns}% - 12px)`,
                     }}
-                    title={`${patient?.name ?? "Paciente"} - ${formatEventTime(item.appointment.startsAt)}`}
+                    title={`${patient?.name ?? "Paciente"} - ${formatEventTime(item.appointment.startsAt)} - ${calendarStatus.label}`}
+                    onClick={() => onAppointmentClick(item.appointment.id)}
                   >
-                    <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[#174EA6]/70">
+                    <div className="truncate text-xs font-semibold uppercase tracking-[0.12em]">
                       {formatEventTime(item.appointment.startsAt)}
                     </div>
                     <div className="truncate text-sm font-semibold">
                       {patient?.name ?? "Paciente"}
                     </div>
-                    <div className="truncate text-xs text-[#174EA6]/80">
-                      {appointmentStatusLabels[item.appointment.status]}
+                    <div className="truncate text-xs">
+                      {calendarStatus.label}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -845,6 +874,38 @@ function formatHourLabel(hour: number) {
   if (hour === 12) return "12 PM";
   if (hour > 12) return `${hour - 12} PM`;
   return `${hour} AM`;
+}
+
+function getCalendarStatus(appointment: CalendarAppointment) {
+  if (appointment.status === "waiting") {
+    return {
+      label: "Agendado",
+      monthClassName: "bg-amber-100 text-amber-900",
+      gridClassName: "border-amber-200 bg-amber-100 text-amber-900",
+    };
+  }
+
+  if (appointment.status === "cancelled") {
+    return {
+      label: "A reagendar",
+      monthClassName: "bg-rose-100 text-rose-900",
+      gridClassName: "border-rose-200 bg-rose-100 text-rose-900",
+    };
+  }
+
+  if (new Date(appointment.endsAt).getTime() < Date.now()) {
+    return {
+      label: "Consulta feita",
+      monthClassName: "bg-slate-200 text-slate-800",
+      gridClassName: "border-slate-300 bg-slate-200 text-slate-800",
+    };
+  }
+
+  return {
+    label: "Confirmado",
+    monthClassName: "bg-emerald-100 text-emerald-900",
+    gridClassName: "border-emerald-200 bg-emerald-100 text-emerald-900",
+  };
 }
 
 function layoutAppointments(appointments: CalendarAppointment[]) {
