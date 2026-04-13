@@ -205,6 +205,18 @@ class MedaseStore {
     );
   }
 
+  addAppointment(
+    appointment: Omit<DoctorAppointment, "id">,
+  ): DoctorAppointment {
+    const newAppointment: DoctorAppointment = {
+      ...appointment,
+      id: `apt-${Date.now()}`,
+    };
+
+    this.appointments.push(newAppointment);
+    return newAppointment;
+  }
+
   updateAppointmentStatus(
     appointmentId: string,
     status: DoctorAppointment["status"],
@@ -215,6 +227,21 @@ class MedaseStore {
     this.appointments[index] = {
       ...this.appointments[index],
       status,
+    };
+
+    return this.appointments[index];
+  }
+
+  updateAppointment(
+    appointmentId: string,
+    updates: Partial<Omit<DoctorAppointment, "id">>,
+  ): DoctorAppointment | undefined {
+    const index = this.appointments.findIndex((a) => a.id === appointmentId);
+    if (index === -1) return undefined;
+
+    this.appointments[index] = {
+      ...this.appointments[index],
+      ...updates,
     };
 
     return this.appointments[index];

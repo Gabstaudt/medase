@@ -4,6 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,7 +28,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  UserPlus,
+  FilePenLine,
+  PlusCircle,
   Users,
 } from "lucide-react";
 
@@ -27,6 +38,13 @@ type CalendarView = "day" | "week" | "month";
 type CalendarAppointment = DoctorAppointment & {
   endsAt: string;
 };
+type SchedulingMode = "existing" | "new";
+
+const doctorOptions = [
+  { name: "Dra. Helena Costa", specialty: "Ginecologia" },
+  { name: "Dra. Marina Alves", specialty: "Obstetrícia" },
+  { name: "Dra. Camila Rocha", specialty: "Endocrinologia" },
+] as const;
 
 const appointmentStatusStyles: Record<DoctorAppointment["status"], string> = {
   confirmed: "bg-emerald-100 text-emerald-800",
@@ -46,6 +64,29 @@ export default function SecretaryDashboard() {
   const [referenceDate, setReferenceDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState<CalendarView>("month");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
+  const [editDoctorName, setEditDoctorName] = useState(doctorOptions[0].name);
+  const [editAppointmentDate, setEditAppointmentDate] = useState("");
+  const [editAppointmentTime, setEditAppointmentTime] = useState("");
+  const [editAppointmentStatus, setEditAppointmentStatus] =
+    useState<DoctorAppointment["status"]>("waiting");
+  const [editAppointmentNotes, setEditAppointmentNotes] = useState("");
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [schedulingMode, setSchedulingMode] = useState<SchedulingMode>("existing");
+  const [selectedPatientId, setSelectedPatientId] = useState("");
+  const [selectedDoctorName, setSelectedDoctorName] = useState(doctorOptions[0].name);
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentNotes, setAppointmentNotes] = useState("");
+  const [newPatientForm, setNewPatientForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    cpf: "",
+    birthDate: "",
+    bloodType: "",
+    allergies: "",
+  });
 
   const refreshSnapshot = () => {
     setSnapshot(store.getSecretaryDashboardData());
@@ -102,10 +143,179 @@ export default function SecretaryDashboard() {
 
   const handleCalendarAppointmentClick = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
-    const element = document.getElementById(`appointment-${appointmentId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    openAppointmentEditor(appointmentId);
+  };
+
+  const openAppointmentEditor = (appointmentId: string) => {
+    const appointment = snapshot?.appointments.find((item) => item.id === appointmentId);
+    if (!appointment) return;
+
+    const startsAt = new Date(appointment.startsAt);
+    setEditingAppointmentId(appointmentId);
+    setEditDoctorName(appointment.doctorName);
+    setEditAppointmentDate(toDateInputValue(startsAt));
+    setEditAppointmentTime(toTimeInputValue(startsAt));
+    setEditAppointmentStatus(appointment.status);
+    setEditAppointmentNotes(appointment.notes ?? "");
+  };
+
+  const closeAppointmentEditor = () => {
+    setEditingAppointmentId(null);
+    setEditDoctorName(doctorOptions[0].name);
+    setEditAppointmentDate("");
+    setEditAppointmentTime("");
+    setEditAppointmentStatus("waiting");
+    setEditAppointmentNotes("");
+  };
+
+  const handleSaveAppointmentChanges = () => {
+    if (!editingAppointmentId || !editAppointmentDate || !editAppointmentTime) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Informe a data e o horário da consulta.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    const updated = store.updateAppointment(editingAppointmentId, {
+      doctorName: editDoctorName,
+      specialty: getDoctorSpecialty(editDoctorName),
+      startsAt: `${editAppointmentDate}T${editAppointmentTime}:00`,
+      status: editAppointmentStatus,
+      notes: editAppointmentNotes.trim() || undefined,
+    });
+
+    if (!updated) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a consulta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    refreshSnapshot();
+    setSelectedAppointmentId(updated.id);
+    closeAppointmentEditor();
+    toast({
+      title: "Consulta atualizada",
+      description: "Os dados da consulta foram salvos.",
+    });
+  };
+
+  const resetSchedulingForm = () => {
+    setSchedulingMode("existing");
+    setSelectedPatientId(snapshot?.patients[0]?.id ?? "");
+    setSelectedDoctorName(doctorOptions[0].name);
+    setAppointmentDate("");
+    setAppointmentTime("");
+    setAppointmentNotes("");
+    setNewPatientForm({
+      name: "",
+      email: "",
+      phone: "",
+      cpf: "",
+      birthDate: "",
+      bloodType: "",
+      allergies: "",
+    });
+  };
+
+  const openScheduleDialog = () => {
+    resetSchedulingForm();
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleSchedulePatient = () => {
+    if (!appointmentDate || !appointmentTime) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Informe a data e o horário da consulta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let patientId = selectedPatientId;
+
+    if (schedulingMode === "new") {
+      if (
+        !newPatientForm.name ||
+        !newPatientForm.email ||
+        !newPatientForm.phone ||
+        !newPatientForm.cpf ||
+        !newPatientForm.birthDate
+      ) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Preencha os dados principais do novo paciente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const patient = store.addPatient({
+        name: newPatientForm.name,
+        email: newPatientForm.email,
+        phone: newPatientForm.phone,
+        cpf: newPatientForm.cpf,
+        birthDate: newPatientForm.birthDate,
+        gender: "other",
+        address: {
+          street: "",
+          number: "",
+          city: "",
+          state: "",
+          zipCode: "",
+        },
+        clinicalData: {
+          bloodType: newPatientForm.bloodType,
+          allergies: newPatientForm.allergies
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          medications: [],
+          medicalHistory: [],
+          lastExam: "",
+          observations: "",
+        },
+        emergencyContact: {
+          name: "",
+          relationship: "",
+          phone: "",
+        },
+        status: "active",
+      });
+
+      patientId = patient.id;
+    } else if (!selectedPatientId) {
+      toast({
+        title: "Paciente obrigatório",
+        description: "Selecione um paciente para agendar a consulta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const startsAt = `${appointmentDate}T${appointmentTime}:00`;
+    const createdAppointment = store.addAppointment({
+      patientId,
+      doctorName: selectedDoctorName,
+      specialty: getDoctorSpecialty(selectedDoctorName),
+      startsAt,
+      status: "waiting",
+      notes: appointmentNotes.trim() || undefined,
+    });
+
+    refreshSnapshot();
+    setReferenceDate(new Date(startsAt));
+    setSelectedAppointmentId(createdAppointment.id);
+    setIsScheduleDialogOpen(false);
+    toast({
+      title: "Consulta agendada",
+      description: "O novo agendamento foi incluído na agenda da médica.",
+    });
   };
 
   if (!snapshot) {
@@ -123,12 +333,13 @@ export default function SecretaryDashboard() {
             Gerencie a agenda da médica e os dados essenciais dos pacientes.
           </p>
         </div>
-        <Link to="/patients/new" className="w-full md:w-auto">
-          <Button className="flex w-full items-center gap-2 md:w-auto">
-            <UserPlus className="h-4 w-4" />
-            Cadastrar paciente
-          </Button>
-        </Link>
+        <Button
+          className="flex w-full items-center gap-2 md:w-auto"
+          onClick={openScheduleDialog}
+        >
+          <PlusCircle className="h-4 w-4" />
+          Agendar paciente
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -283,6 +494,14 @@ export default function SecretaryDashboard() {
                         )}
                         <Button
                           variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => openAppointmentEditor(appointment.id)}
+                        >
+                          <FilePenLine className="mr-2 h-4 w-4" />
+                          Editar consulta
+                        </Button>
+                        <Button
+                          variant="outline"
                           className="w-full border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
                           onClick={() => handleCancelAppointment(appointment.id)}
                         >
@@ -298,6 +517,371 @@ export default function SecretaryDashboard() {
         </CardContent>
       </Card>
 
+      <Dialog
+        open={isScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setIsScheduleDialogOpen(open);
+          if (!open) resetSchedulingForm();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Agendar paciente</DialogTitle>
+            <DialogDescription>
+              Selecione um paciente existente ou faça um cadastro rápido e já agende a consulta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label>Paciente</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={schedulingMode === "existing" ? "default" : "outline"}
+                  onClick={() => setSchedulingMode("existing")}
+                >
+                  Selecionar existente
+                </Button>
+                <Button
+                  type="button"
+                  variant={schedulingMode === "new" ? "default" : "outline"}
+                  onClick={() => setSchedulingMode("new")}
+                >
+                  Cadastrar novo
+                </Button>
+              </div>
+            </div>
+
+            {schedulingMode === "existing" ? (
+              <div className="space-y-2">
+                <Label htmlFor="patient-select">Paciente existente</Label>
+                <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
+                  <SelectTrigger id="patient-select">
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {snapshot.patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="new-name">Nome</Label>
+                  <Input
+                    id="new-name"
+                    value={newPatientForm.name}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, name: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Email</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    value={newPatientForm.email}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, email: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-phone">Telefone</Label>
+                  <Input
+                    id="new-phone"
+                    value={newPatientForm.phone}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, phone: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-cpf">CPF</Label>
+                  <Input
+                    id="new-cpf"
+                    value={newPatientForm.cpf}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, cpf: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-birth-date">Data de nascimento</Label>
+                  <Input
+                    id="new-birth-date"
+                    type="date"
+                    value={newPatientForm.birthDate}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, birthDate: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-blood-type">Tipo sanguíneo</Label>
+                  <Input
+                    id="new-blood-type"
+                    value={newPatientForm.bloodType}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, bloodType: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-allergies">Alergias</Label>
+                  <Input
+                    id="new-allergies"
+                    placeholder="Separe por vírgula"
+                    value={newPatientForm.allergies}
+                    onChange={(event) =>
+                      setNewPatientForm((current) => ({ ...current, allergies: event.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="doctor-select">Médica</Label>
+              <Select value={selectedDoctorName} onValueChange={setSelectedDoctorName}>
+                <SelectTrigger id="doctor-select">
+                  <SelectValue placeholder="Selecione a médica" />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctorOptions.map((doctor) => (
+                    <SelectItem key={doctor.name} value={doctor.name}>
+                      {doctor.name} · {doctor.specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="appointment-date">Data da consulta</Label>
+                <Input
+                  id="appointment-date"
+                  type="date"
+                  value={appointmentDate}
+                  onChange={(event) => setAppointmentDate(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="appointment-time">Horário</Label>
+                <Input
+                  id="appointment-time"
+                  type="time"
+                  value={appointmentTime}
+                  onChange={(event) => setAppointmentTime(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="appointment-notes">Observações</Label>
+                <Input
+                  id="appointment-notes"
+                  placeholder="Motivo da consulta ou observação rápida"
+                  value={appointmentNotes}
+                  onChange={(event) => setAppointmentNotes(event.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSchedulePatient}>
+              Confirmar agendamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingAppointmentId)} onOpenChange={(open) => !open && closeAppointmentEditor()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Detalhes da consulta</DialogTitle>
+            <DialogDescription>
+              Visualize o descritivo do atendimento e atualize o status da consulta.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingAppointmentId && (
+            <AppointmentEditorContent
+              appointment={snapshot.appointments.find((item) => item.id === editingAppointmentId) ?? null}
+              patient={snapshot.patients.find(
+                (item) =>
+                  item.id ===
+                  snapshot.appointments.find((appointment) => appointment.id === editingAppointmentId)?.patientId,
+              ) ?? null}
+              doctorName={editDoctorName}
+              date={editAppointmentDate}
+              time={editAppointmentTime}
+              status={editAppointmentStatus}
+              notes={editAppointmentNotes}
+              onDoctorChange={setEditDoctorName}
+              onDateChange={setEditAppointmentDate}
+              onTimeChange={setEditAppointmentTime}
+              onStatusChange={setEditAppointmentStatus}
+              onNotesChange={setEditAppointmentNotes}
+            />
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeAppointmentEditor}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveAppointmentChanges}>
+              Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}
+
+function AppointmentEditorContent({
+  appointment,
+  patient,
+  doctorName,
+  date,
+  time,
+  status,
+  notes,
+  onDoctorChange,
+  onDateChange,
+  onTimeChange,
+  onStatusChange,
+  onNotesChange,
+}: {
+  appointment: DoctorAppointment | null;
+  patient: Patient | null;
+  doctorName: string;
+  date: string;
+  time: string;
+  status: DoctorAppointment["status"];
+  notes: string;
+  onDoctorChange: (value: string) => void;
+  onDateChange: (value: string) => void;
+  onTimeChange: (value: string) => void;
+  onStatusChange: (value: DoctorAppointment["status"]) => void;
+  onNotesChange: (value: string) => void;
+}) {
+  if (!appointment) return null;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Paciente
+          </div>
+          <div className="mt-1 text-sm font-medium text-slate-900">
+            {patient?.name ?? "Paciente não encontrado"}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Especialidade
+          </div>
+          <div className="mt-1 text-sm font-medium text-slate-900">
+            {appointment.specialty}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Médica
+          </div>
+          <div className="mt-1 text-sm font-medium text-slate-900">
+            {doctorName}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Status atual
+          </div>
+          <div className="mt-1">
+            <Badge className={appointmentStatusStyles[status]}>
+              {getCalendarStatus({
+                ...appointment,
+                status,
+                endsAt: addMinutesToIsoString(`${date}T${time || "00:00"}:00`, 60),
+              }).label}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-doctor-name">Médica</Label>
+        <Select value={doctorName} onValueChange={onDoctorChange}>
+          <SelectTrigger id="edit-doctor-name">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {doctorOptions.map((doctor) => (
+              <SelectItem key={doctor.name} value={doctor.name}>
+                {doctor.name} · {doctor.specialty}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="edit-appointment-date">Data</Label>
+          <Input
+            id="edit-appointment-date"
+            type="date"
+            value={date}
+            onChange={(event) => onDateChange(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-appointment-time">Horário</Label>
+          <Input
+            id="edit-appointment-time"
+            type="time"
+            value={time}
+            onChange={(event) => onTimeChange(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-appointment-status">Status</Label>
+        <Select value={status} onValueChange={(value: DoctorAppointment["status"]) => onStatusChange(value)}>
+          <SelectTrigger id="edit-appointment-status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="waiting">Agendado</SelectItem>
+            <SelectItem value="confirmed">Confirmado</SelectItem>
+            <SelectItem value="cancelled">A reagendar</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-appointment-notes">Descritivo da consulta</Label>
+        <Input
+          id="edit-appointment-notes"
+          placeholder="Motivo, observações ou resumo do atendimento"
+          value={notes}
+          onChange={(event) => onNotesChange(event.target.value)}
+        />
+      </div>
     </div>
   );
 }
@@ -649,6 +1233,19 @@ function addMinutesToIsoString(startsAt: string, amount: number) {
   return date.toISOString();
 }
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toTimeInputValue(date: Date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 function getMonthGrid(date: Date) {
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
   const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
@@ -737,6 +1334,13 @@ function getCalendarStatus(appointment: CalendarAppointment) {
     monthClassName: "bg-emerald-100 text-emerald-900",
     gridClassName: "border-emerald-200 bg-emerald-100 text-emerald-900",
   };
+}
+
+function getDoctorSpecialty(doctorName: string) {
+  return (
+    doctorOptions.find((doctor) => doctor.name === doctorName)?.specialty ??
+    "Clínica"
+  );
 }
 
 function layoutAppointments(appointments: CalendarAppointment[]) {
