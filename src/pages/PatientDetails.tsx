@@ -71,6 +71,8 @@ export default function PatientDetails() {
     date: "",
     status: "",
     result: "",
+    description: "",
+    pdfName: "",
   });
   const [isMedicationDialogOpen, setIsMedicationDialogOpen] = useState(false);
   const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
@@ -216,7 +218,14 @@ export default function PatientDetails() {
 
   const openNewExamDialog = () => {
     setEditingExamId(null);
-    setExamForm({ name: "", date: "", status: "", result: "" });
+    setExamForm({
+      name: "",
+      date: "",
+      status: "",
+      result: "",
+      description: "",
+      pdfName: "",
+    });
     setIsExamDialogOpen(true);
   };
 
@@ -227,6 +236,8 @@ export default function PatientDetails() {
       date: exam.date,
       status: exam.status,
       result: exam.result,
+      description: exam.description ?? "",
+      pdfName: exam.pdfName ?? "",
     });
     setIsExamDialogOpen(true);
   };
@@ -240,6 +251,8 @@ export default function PatientDetails() {
       date: examForm.date,
       status: examForm.status,
       result: examForm.result,
+      description: examForm.description || undefined,
+      pdfName: examForm.pdfName || undefined,
     };
 
     const nextHistory = editingExamId
@@ -304,6 +317,20 @@ export default function PatientDetails() {
       medicationHistory.filter((medication) => medication.id !== medicationId),
     );
   };
+
+  const examTypeSuggestions = Array.from(
+    new Set(
+      [
+        "Hemograma",
+        "Ultrassonografia pélvica",
+        "Papanicolau",
+        "Colposcopia",
+        "Mamografia",
+        ...examHistory.map((exam) => exam.name),
+        ...analyses.flatMap((analysis) => analysis.clinicalData.previousExams),
+      ].filter(Boolean),
+    ),
+  );
 
   return (
     <div className="space-y-6">
@@ -580,7 +607,13 @@ export default function PatientDetails() {
                       </div>
                       <Badge variant="outline">{exam.status}</Badge>
                     </div>
+                    {exam.description && (
+                      <p className="mt-3 text-sm text-gray-600">{exam.description}</p>
+                    )}
                     <p className="mt-3 text-sm text-gray-700">{exam.result}</p>
+                    {exam.pdfName && (
+                      <p className="mt-2 text-sm text-primary">PDF anexado: {exam.pdfName}</p>
+                    )}
                     {!secretaryMode && (
                       <div className="mt-4 flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditExamDialog(exam)}>
@@ -751,12 +784,34 @@ export default function PatientDetails() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="exam-name">Exame</Label>
+              <Label htmlFor="exam-name">Tipo de exame</Label>
               <Input
                 id="exam-name"
+                placeholder="Digite e pressione Enter"
                 value={examForm.name}
-                onChange={(event) => setExamForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setExamForm((current) => ({ ...current, name: event.target.value }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    setExamForm((current) => ({ ...current, name: current.name.trim() }));
+                  }
+                }}
               />
+              <div className="flex flex-wrap gap-2">
+                {examTypeSuggestions.map((type) => (
+                  <Button
+                    key={type}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExamForm((current) => ({ ...current, name: type }))}
+                  >
+                    {type}
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -778,12 +833,39 @@ export default function PatientDetails() {
               </div>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="exam-description">Descrição</Label>
+              <Input
+                id="exam-description"
+                value={examForm.description}
+                onChange={(event) =>
+                  setExamForm((current) => ({ ...current, description: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="exam-result">Resultado</Label>
               <Input
                 id="exam-result"
                 value={examForm.result}
                 onChange={(event) => setExamForm((current) => ({ ...current, result: event.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="exam-pdf">PDF do exame</Label>
+              <Input
+                id="exam-pdf"
+                type="file"
+                accept="application/pdf"
+                onChange={(event) =>
+                  setExamForm((current) => ({
+                    ...current,
+                    pdfName: event.target.files?.[0]?.name ?? current.pdfName,
+                  }))
+                }
+              />
+              {examForm.pdfName && (
+                <p className="text-sm text-gray-500">Arquivo selecionado: {examForm.pdfName}</p>
+              )}
             </div>
           </div>
           <DialogFooter>
