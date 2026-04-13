@@ -3,11 +3,33 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { getDefaultRouteForUser, isSecretary } from "@/lib/auth";
 import { store } from "@/lib/store";
-import { AIAnalysis, DoctorAppointment, Patient } from "@/lib/types";
+import {
+  AIAnalysis,
+  DoctorAppointment,
+  Patient,
+  PatientExamRecord,
+  PatientMedicationRecord,
+} from "@/lib/types";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -19,6 +41,7 @@ import {
   Pill,
   Mail,
   Phone,
+  PlusCircle,
   Trash2,
   User,
 } from "lucide-react";
@@ -33,6 +56,46 @@ export default function PatientDetails() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [analyses, setAnalyses] = useState<AIAnalysis[]>([]);
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
+  const [examHistory, setExamHistory] = useState<PatientExamRecord[]>([]);
+  const [medicationHistory, setMedicationHistory] = useState<PatientMedicationRecord[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<DoctorAppointment | null>(null);
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentStatus, setAppointmentStatus] =
+    useState<DoctorAppointment["status"]>("waiting");
+  const [appointmentNotes, setAppointmentNotes] = useState("");
+  const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [examForm, setExamForm] = useState({
+    name: "",
+    date: "",
+    status: "",
+    result: "",
+  });
+  const [isMedicationDialogOpen, setIsMedicationDialogOpen] = useState(false);
+  const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
+  const [medicationForm, setMedicationForm] = useState({
+    name: "",
+    period: "",
+    status: "",
+    description: "",
+  });
+
+  const syncPatientData = (patientId: string) => {
+    const foundPatient = store.getPatient(patientId);
+    if (!foundPatient) return;
+
+    const patientAnalyses = store.getPatientAnalyses(patientId);
+    const patientAppointments = store
+      .getAppointments()
+      .filter((appointment) => appointment.patientId === patientId);
+
+    setPatient(foundPatient);
+    setAnalyses(patientAnalyses);
+    setAppointments(patientAppointments);
+    setExamHistory(resolveExamHistory(foundPatient, patientAnalyses));
+    setMedicationHistory(resolveMedicationHistory(foundPatient));
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -48,11 +111,7 @@ export default function PatientDetails() {
       return;
     }
 
-    setPatient(foundPatient);
-    setAnalyses(store.getPatientAnalyses(id));
-    setAppointments(
-      store.getAppointments().filter((appointment) => appointment.patientId === id),
-    );
+    syncPatientData(id);
   }, [id, navigate, toast]);
 
   const handleDeletePatient = () => {
@@ -89,8 +148,162 @@ export default function PatientDetails() {
   const upcomingAppointments = appointments.filter(
     (appointment) => new Date(appointment.startsAt).getTime() >= now,
   );
-  const examHistory = buildExamHistory(patient, analyses);
-  const medicationHistory = buildMedicationHistory(patient);
+
+  const openAppointmentDetails = (appointment: DoctorAppointment) => {
+    const startsAt = new Date(appointment.startsAt);
+    setSelectedAppointment(appointment);
+    setAppointmentDate(toDateInputValue(startsAt));
+    setAppointmentTime(toTimeInputValue(startsAt));
+    setAppointmentStatus(appointment.status);
+    setAppointmentNotes(appointment.notes ?? "");
+  };
+
+  const closeAppointmentDetails = () => {
+    setSelectedAppointment(null);
+    setAppointmentDate("");
+    setAppointmentTime("");
+    setAppointmentStatus("waiting");
+    setAppointmentNotes("");
+  };
+
+  const handleSaveAppointment = () => {
+    if (!selectedAppointment || !appointmentDate || !appointmentTime) return;
+
+    const updated = store.updateAppointment(selectedAppointment.id, {
+      startsAt: `${appointmentDate}T${appointmentTime}:00`,
+      status: appointmentStatus,
+      notes: appointmentNotes.trim() || undefined,
+    });
+
+    if (!updated) {
+      toast({
+        title: "Erro",
+        description: "Nao foi possivel atualizar a consulta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    syncPatientData(patient.id);
+    closeAppointmentDetails();
+    toast({
+      title: "Consulta atualizada",
+      description: "As informacoes da consulta foram salvas.",
+    });
+  };
+
+  const persistExamHistory = (nextHistory: PatientExamRecord[]) => {
+    const updated = store.updatePatient(patient.id, {
+      clinicalData: {
+        ...patient.clinicalData,
+        examHistory: nextHistory,
+      },
+    });
+
+    if (updated) syncPatientData(patient.id);
+  };
+
+  const persistMedicationHistory = (nextHistory: PatientMedicationRecord[]) => {
+    const updated = store.updatePatient(patient.id, {
+      clinicalData: {
+        ...patient.clinicalData,
+        medicationHistory: nextHistory,
+      },
+    });
+
+    if (updated) syncPatientData(patient.id);
+  };
+
+  const openNewExamDialog = () => {
+    setEditingExamId(null);
+    setExamForm({ name: "", date: "", status: "", result: "" });
+    setIsExamDialogOpen(true);
+  };
+
+  const openEditExamDialog = (exam: PatientExamRecord) => {
+    setEditingExamId(exam.id);
+    setExamForm({
+      name: exam.name,
+      date: exam.date,
+      status: exam.status,
+      result: exam.result,
+    });
+    setIsExamDialogOpen(true);
+  };
+
+  const handleSaveExam = () => {
+    if (!examForm.name || !examForm.date || !examForm.status || !examForm.result) return;
+
+    const nextExam: PatientExamRecord = {
+      id: editingExamId ?? `exam-${Date.now()}`,
+      name: examForm.name,
+      date: examForm.date,
+      status: examForm.status,
+      result: examForm.result,
+    };
+
+    const nextHistory = editingExamId
+      ? examHistory.map((exam) => (exam.id === editingExamId ? nextExam : exam))
+      : [nextExam, ...examHistory];
+
+    persistExamHistory(nextHistory);
+    setIsExamDialogOpen(false);
+  };
+
+  const handleDeleteExam = (examId: string) => {
+    persistExamHistory(examHistory.filter((exam) => exam.id !== examId));
+  };
+
+  const openNewMedicationDialog = () => {
+    setEditingMedicationId(null);
+    setMedicationForm({ name: "", period: "", status: "", description: "" });
+    setIsMedicationDialogOpen(true);
+  };
+
+  const openEditMedicationDialog = (medication: PatientMedicationRecord) => {
+    setEditingMedicationId(medication.id);
+    setMedicationForm({
+      name: medication.name,
+      period: medication.period,
+      status: medication.status,
+      description: medication.description,
+    });
+    setIsMedicationDialogOpen(true);
+  };
+
+  const handleSaveMedication = () => {
+    if (
+      !medicationForm.name ||
+      !medicationForm.period ||
+      !medicationForm.status ||
+      !medicationForm.description
+    ) {
+      return;
+    }
+
+    const nextMedication: PatientMedicationRecord = {
+      id: editingMedicationId ?? `med-${Date.now()}`,
+      name: medicationForm.name,
+      period: medicationForm.period,
+      status: medicationForm.status,
+      description: medicationForm.description,
+    };
+
+    const nextHistory = editingMedicationId
+      ? medicationHistory.map((medication) =>
+          medication.id === editingMedicationId ? nextMedication : medication,
+        )
+      : [nextMedication, ...medicationHistory];
+
+    persistMedicationHistory(nextHistory);
+    setIsMedicationDialogOpen(false);
+  };
+
+  const handleDeleteMedication = (medicationId: string) => {
+    persistMedicationHistory(
+      medicationHistory.filter((medication) => medication.id !== medicationId),
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -257,7 +470,11 @@ export default function PatientDetails() {
                     )
                     .slice(0, 5)
                     .map((appointment) => (
-                      <AppointmentHistoryCard key={appointment.id} appointment={appointment} />
+                      <AppointmentHistoryCard
+                        key={appointment.id}
+                        appointment={appointment}
+                        onClick={() => openAppointmentDetails(appointment)}
+                      />
                     ))
                 ) : (
                   <p className="text-sm text-gray-500">Nenhuma consulta anterior registrada.</p>
@@ -281,7 +498,11 @@ export default function PatientDetails() {
                     )
                     .slice(0, 5)
                     .map((appointment) => (
-                      <AppointmentHistoryCard key={appointment.id} appointment={appointment} />
+                      <AppointmentHistoryCard
+                        key={appointment.id}
+                        appointment={appointment}
+                        onClick={() => openAppointmentDetails(appointment)}
+                      />
                     ))
                 ) : (
                   <p className="text-sm text-gray-500">Nenhuma consulta futura agendada.</p>
@@ -334,24 +555,47 @@ export default function PatientDetails() {
 
         <TabsContent value="exames" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 Historico de exames e resultados
               </CardTitle>
+              {!secretaryMode && (
+                <Button variant="outline" onClick={openNewExamDialog}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar registro
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {examHistory.length > 0 ? (
-                examHistory.map((exam, index) => (
-                  <div key={`${exam.name}-${index}`} className="rounded-xl border p-4">
+                examHistory.map((exam) => (
+                  <div key={exam.id} className="rounded-xl border p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-medium text-gray-900">{exam.name}</p>
-                        <p className="text-sm text-gray-600">{exam.dateLabel}</p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(exam.date).toLocaleDateString("pt-BR")}
+                        </p>
                       </div>
                       <Badge variant="outline">{exam.status}</Badge>
                     </div>
                     <p className="mt-3 text-sm text-gray-700">{exam.result}</p>
+                    {!secretaryMode && (
+                      <div className="mt-4 flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditExamDialog(exam)}>
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteExam(exam.id)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
@@ -363,16 +607,22 @@ export default function PatientDetails() {
 
         <TabsContent value="medicamentos" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Pill className="h-5 w-5 text-primary" />
                 Historico de medicamentos
               </CardTitle>
+              {!secretaryMode && (
+                <Button variant="outline" onClick={openNewMedicationDialog}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar registro
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {medicationHistory.length > 0 ? (
-                medicationHistory.map((medication, index) => (
-                  <div key={`${medication.name}-${index}`} className="rounded-xl border p-4">
+                medicationHistory.map((medication) => (
+                  <div key={medication.id} className="rounded-xl border p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-medium text-gray-900">{medication.name}</p>
@@ -381,6 +631,25 @@ export default function PatientDetails() {
                       <Badge variant="secondary">{medication.status}</Badge>
                     </div>
                     <p className="mt-3 text-sm text-gray-700">{medication.description}</p>
+                    {!secretaryMode && (
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditMedicationDialog(medication)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteMedication(medication.id)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
@@ -392,13 +661,224 @@ export default function PatientDetails() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={Boolean(selectedAppointment)} onOpenChange={(open) => !open && closeAppointmentDetails()}>
+        <DialogContent className="sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Consulta</DialogTitle>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <p className="text-sm font-medium text-slate-900">
+                  {selectedAppointment.doctorName} · {selectedAppointment.specialty}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {new Date(selectedAppointment.startsAt).toLocaleDateString("pt-BR")} às{" "}
+                  {new Date(selectedAppointment.startsAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="consult-date">Data</Label>
+                  <Input
+                    id="consult-date"
+                    type="date"
+                    value={appointmentDate}
+                    onChange={(event) => setAppointmentDate(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="consult-time">Horario</Label>
+                  <Input
+                    id="consult-time"
+                    type="time"
+                    value={appointmentTime}
+                    onChange={(event) => setAppointmentTime(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consult-status">Status</Label>
+                <Select
+                  value={appointmentStatus}
+                  onValueChange={(value: DoctorAppointment["status"]) => setAppointmentStatus(value)}
+                >
+                  <SelectTrigger id="consult-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="waiting">Agendado</SelectItem>
+                    <SelectItem value="confirmed">Confirmado</SelectItem>
+                    <SelectItem value="cancelled">A reagendar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consult-notes">Descritivo da consulta</Label>
+                <Input
+                  id="consult-notes"
+                  value={appointmentNotes}
+                  onChange={(event) => setAppointmentNotes(event.target.value)}
+                  placeholder="Informacoes da consulta"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeAppointmentDetails}>
+              Fechar
+            </Button>
+            {!secretaryMode && selectedAppointment && new Date(selectedAppointment.startsAt).getTime() >= now && (
+              <Button type="button" onClick={handleSaveAppointment}>
+                Reagendar / salvar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExamDialogOpen} onOpenChange={setIsExamDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingExamId ? "Editar exame" : "Adicionar exame"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="exam-name">Exame</Label>
+              <Input
+                id="exam-name"
+                value={examForm.name}
+                onChange={(event) => setExamForm((current) => ({ ...current, name: event.target.value }))}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="exam-date">Data</Label>
+                <Input
+                  id="exam-date"
+                  type="date"
+                  value={examForm.date}
+                  onChange={(event) => setExamForm((current) => ({ ...current, date: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="exam-status">Status</Label>
+                <Input
+                  id="exam-status"
+                  value={examForm.status}
+                  onChange={(event) => setExamForm((current) => ({ ...current, status: event.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="exam-result">Resultado</Label>
+              <Input
+                id="exam-result"
+                value={examForm.result}
+                onChange={(event) => setExamForm((current) => ({ ...current, result: event.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsExamDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveExam}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMedicationDialogOpen} onOpenChange={setIsMedicationDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMedicationId ? "Editar medicamento" : "Adicionar medicamento"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="med-name">Medicamento</Label>
+              <Input
+                id="med-name"
+                value={medicationForm.name}
+                onChange={(event) =>
+                  setMedicationForm((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="med-period">Periodo</Label>
+                <Input
+                  id="med-period"
+                  value={medicationForm.period}
+                  onChange={(event) =>
+                    setMedicationForm((current) => ({ ...current, period: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="med-status">Status</Label>
+                <Input
+                  id="med-status"
+                  value={medicationForm.status}
+                  onChange={(event) =>
+                    setMedicationForm((current) => ({ ...current, status: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="med-description">Descricao</Label>
+              <Input
+                id="med-description"
+                value={medicationForm.description}
+                onChange={(event) =>
+                  setMedicationForm((current) => ({ ...current, description: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsMedicationDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveMedication}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function AppointmentHistoryCard({ appointment }: { appointment: DoctorAppointment }) {
+function AppointmentHistoryCard({
+  appointment,
+  onClick,
+}: {
+  appointment: DoctorAppointment;
+  onClick: () => void;
+}) {
   return (
-    <div className="rounded-xl border p-4">
+    <button
+      type="button"
+      className="w-full rounded-xl border p-4 text-left transition hover:border-primary/40 hover:bg-slate-50"
+      onClick={onClick}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium text-gray-900">
@@ -428,18 +908,21 @@ function AppointmentHistoryCard({ appointment }: { appointment: DoctorAppointmen
               : "A reagendar"}
         </Badge>
       </div>
-      {appointment.notes && (
-        <p className="mt-3 text-sm text-gray-700">{appointment.notes}</p>
-      )}
-    </div>
+      {appointment.notes && <p className="mt-3 text-sm text-gray-700">{appointment.notes}</p>}
+    </button>
   );
 }
 
-function buildExamHistory(patient: Patient, analyses: AIAnalysis[]) {
+function resolveExamHistory(patient: Patient, analyses: AIAnalysis[]) {
+  if (patient.clinicalData.examHistory && patient.clinicalData.examHistory.length > 0) {
+    return patient.clinicalData.examHistory;
+  }
+
   const baseExams = analyses.flatMap((analysis) =>
     analysis.clinicalData.previousExams.map((examName) => ({
+      id: `analysis-${analysis.id}-${examName}`,
       name: examName,
-      dateLabel: new Date(analysis.analyzedAt).toLocaleDateString("pt-BR"),
+      date: analysis.analyzedAt.slice(0, 10),
       status: analysis.results.riskLevel === "high" ? "Requer atenção" : "Concluído",
       result: analysis.results.findings.join(", "),
     })),
@@ -447,8 +930,9 @@ function buildExamHistory(patient: Patient, analyses: AIAnalysis[]) {
 
   if (patient.clinicalData.lastExam) {
     baseExams.unshift({
+      id: "last-exam",
       name: "Último exame registrado",
-      dateLabel: new Date(patient.clinicalData.lastExam).toLocaleDateString("pt-BR"),
+      date: patient.clinicalData.lastExam,
       status: "Resultado disponível",
       result:
         patient.clinicalData.observations || "Sem observações adicionais registradas.",
@@ -458,12 +942,33 @@ function buildExamHistory(patient: Patient, analyses: AIAnalysis[]) {
   return baseExams;
 }
 
-function buildMedicationHistory(patient: Patient) {
-  return patient.clinicalData.medications.map((medication) => ({
+function resolveMedicationHistory(patient: Patient) {
+  if (
+    patient.clinicalData.medicationHistory &&
+    patient.clinicalData.medicationHistory.length > 0
+  ) {
+    return patient.clinicalData.medicationHistory;
+  }
+
+  return patient.clinicalData.medications.map((medication, index) => ({
+    id: `medication-${index}-${medication}`,
     name: medication,
     period: "Uso atual registrado",
     status: "Em acompanhamento",
     description:
       patient.clinicalData.observations || "Sem observações adicionais para este medicamento.",
   }));
+}
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toTimeInputValue(date: Date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }

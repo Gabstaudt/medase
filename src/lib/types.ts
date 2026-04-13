@@ -1,3 +1,19 @@
+export interface PatientExamRecord {
+  id: string;
+  name: string;
+  date: string;
+  status: string;
+  result: string;
+}
+
+export interface PatientMedicationRecord {
+  id: string;
+  name: string;
+  period: string;
+  status: string;
+  description: string;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -21,6 +37,8 @@ export interface Patient {
     medicalHistory: string[];
     lastExam: string;
     observations: string;
+    examHistory?: PatientExamRecord[];
+    medicationHistory?: PatientMedicationRecord[];
   };
   emergencyContact: {
     name: string;
