@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchPatients } from "@/lib/patient-api";
 import { store } from "@/lib/store";
 import { DoctorAppointment, Patient } from "@/lib/types";
 import {
@@ -45,7 +46,15 @@ export default function DoctorAgenda() {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    setPatients(store.getPatients());
+    const loadPatients = async () => {
+      try {
+        setPatients(await fetchPatients());
+      } catch {
+        setPatients([]);
+      }
+    };
+
+    void loadPatients();
     setAppointments(store.getAppointments());
   }, []);
 
