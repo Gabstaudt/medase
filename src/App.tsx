@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import HeaderBar from "@/components/layout/HeaderBar";
 import { useState, type ReactNode } from "react";
 import {
+  hasBackendRole,
   getCurrentUser,
   getDefaultRouteForUser,
   hasRole,
@@ -113,7 +114,7 @@ const App = () => (
             <Route
               path="/exams-medications"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <ProtectedRoute allowedRoles={["ADMIN"]} requiredBackendRole="medico">
                   <ExamsMedications />
                 </ProtectedRoute>
               }
@@ -157,9 +158,11 @@ export default App;
 function ProtectedRoute({
   children,
   allowedRoles,
+  requiredBackendRole,
 }: {
   children: ReactNode;
   allowedRoles: Array<"ADMIN" | "SECRETARIA">;
+  requiredBackendRole?: string;
 }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -171,6 +174,10 @@ function ProtectedRoute({
   }
 
   if (!allowedRoles.some((role) => hasRole(role))) {
+    return <Navigate to={getDefaultRouteForUser()} replace />;
+  }
+
+  if (requiredBackendRole && !hasBackendRole(requiredBackendRole)) {
     return <Navigate to={getDefaultRouteForUser()} replace />;
   }
 

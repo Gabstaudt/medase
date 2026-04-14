@@ -106,12 +106,20 @@ export function hasRole(role: UserRole): boolean {
   return getCurrentUser()?.role === role;
 }
 
+export function hasBackendRole(role: string): boolean {
+  return getCurrentUser()?.backendRole === role;
+}
+
 export function isSecretary(): boolean {
   return hasRole("SECRETARIA");
 }
 
 export function isAdmin(): boolean {
   return hasRole("ADMIN");
+}
+
+export function isBackendDoctor(): boolean {
+  return hasBackendRole("medico");
 }
 
 export function getDefaultRouteForUser(): string {
