@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getDefaultRouteForUser } from "@/lib/auth";
+import { getDefaultRouteForUser, login } from "@/lib/auth";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Informe o usuario"),
@@ -23,6 +23,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const [showPass, setShowPass] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const {
     register,
@@ -32,38 +33,16 @@ export default function Login() {
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginForm) => {
-    const user = data.username.trim().toLowerCase();
-    const pass = data.password.trim();
+    setSubmitError("");
 
-    if (user === "admin@medase.com" && pass === "admin123") {
-      localStorage.setItem(
-        "medase:user",
-        JSON.stringify({
-          id: 1,
-          name: "Admin",
-          email: "admin@medase.com",
-          role: "ADMIN",
-        }),
-      );
+    try {
+      await login(data.username.trim().toLowerCase(), data.password.trim());
       navigate(getDefaultRouteForUser());
-      return;
-    }
-
-    if (user === "secretaria@medase.com" && pass === "secretaria123") {
-      localStorage.setItem(
-        "medase:user",
-        JSON.stringify({
-          id: 2,
-          name: "Ana Secretaria",
-          email: "secretaria@medase.com",
-          role: "SECRETARIA",
-        }),
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Usuario ou senha invalidos.",
       );
-      navigate(getDefaultRouteForUser());
-      return;
     }
-
-    alert("Usuario ou senha invalidos.");
   };
 
   return (
@@ -182,6 +161,9 @@ export default function Login() {
                 >
                   {isSubmitting ? "Entrando..." : "Entrar"}
                 </Button>
+                {submitError && (
+                  <p className="text-center text-sm text-red-600">{submitError}</p>
+                )}
               </form>
             </CardContent>
           </Card>

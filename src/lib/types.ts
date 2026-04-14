@@ -59,6 +59,8 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
+  backendRole?: string;
+  phone?: string;
 }
 
 export interface DoctorAppointment {
