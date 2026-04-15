@@ -1,1056 +1,277 @@
-import { useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { deletePatient, fetchPatient } from "@/lib/patient-api";
+import {
+  createExamCatalogItem,
+  createMedicationCatalogItem,
+  createPatientExamRecord,
+  createPatientHistory,
+  createPatientMedicationRecord,
+  deletePatientExamRecord,
+  deletePatientHistory,
+  deletePatientMedicationRecord,
+  fetchExamCatalog,
+  fetchMedicationCatalog,
+  fetchPatientExamRecords,
+  fetchPatientHistory,
+  fetchPatientMedicationRecords,
+  updatePatientExamRecord,
+  updatePatientHistory,
+  updatePatientMedicationRecord,
+  type ExamCatalogItem,
+  type MedicationCatalogItem,
+  type PatientHistoryItem,
+} from "@/lib/patient-clinical-api";
 import { getDefaultRouteForUser, isSecretary } from "@/lib/auth";
-import { store } from "@/lib/store";
-import {
-  AIAnalysis,
-  DoctorAppointment,
-  Patient,
-  PatientExamRecord,
-  PatientMedicationRecord,
-} from "@/lib/types";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Brain,
-  Calendar,
-  Edit,
-  FileText,
-  Heart,
-  Pill,
-  Mail,
-  Phone,
-  PlusCircle,
-  Trash2,
-  User,
-} from "lucide-react";
+import { type Patient, type PatientExamRecord, type PatientMedicationRecord } from "@/lib/types";
+import { AlertTriangle, ArrowLeft, Edit, FileText, Heart, Mail, Phone, Pill, PlusCircle, Trash2, User } from "lucide-react";
+
+type Mode = "existing" | "new";
+
+function getRecordStatusClass(status: string) {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized.includes("concl")) {
+    return "rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700";
+  }
+  if (normalized.includes("andamento") || normalized.includes("agend")) {
+    return "rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700";
+  }
+  if (normalized.includes("cancel") || normalized.includes("reag")) {
+    return "rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700";
+  }
+  return "rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700";
+}
 
 export default function PatientDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const secretaryMode = isSecretary();
-  const backRoute = secretaryMode ? "/secretary" : "/patients";
-
+  const backRoute = secretaryMode ? "/secretary/patients" : "/patients";
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [analyses, setAnalyses] = useState<AIAnalysis[]>([]);
-  const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
-  const [examHistory, setExamHistory] = useState<PatientExamRecord[]>([]);
-  const [medicationHistory, setMedicationHistory] = useState<PatientMedicationRecord[]>([]);
-  const [selectedAppointment, setSelectedAppointment] = useState<DoctorAppointment | null>(null);
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentTime, setAppointmentTime] = useState("");
-  const [appointmentStatus, setAppointmentStatus] =
-    useState<DoctorAppointment["status"]>("waiting");
-  const [appointmentNotes, setAppointmentNotes] = useState("");
-  const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
+  const [history, setHistory] = useState<PatientHistoryItem[]>([]);
+  const [examRecords, setExamRecords] = useState<PatientExamRecord[]>([]);
+  const [medicationRecords, setMedicationRecords] = useState<PatientMedicationRecord[]>([]);
+  const [examCatalog, setExamCatalog] = useState<ExamCatalogItem[]>([]);
+  const [medicationCatalog, setMedicationCatalog] = useState<MedicationCatalogItem[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [examOpen, setExamOpen] = useState(false);
+  const [medicationOpen, setMedicationOpen] = useState(false);
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
-  const [examForm, setExamForm] = useState({
-    name: "",
-    date: "",
-    status: "",
-    result: "",
-    description: "",
-    pdfName: "",
-  });
-  const [isMedicationDialogOpen, setIsMedicationDialogOpen] = useState(false);
   const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
-  const [medicationForm, setMedicationForm] = useState({
-    name: "",
-    period: "",
-    status: "",
-    description: "",
-  });
+  const [examMode, setExamMode] = useState<Mode>("existing");
+  const [medicationMode, setMedicationMode] = useState<Mode>("existing");
+  const [historyForm, setHistoryForm] = useState({ titulo: "", descricao: "", data_registro: "" });
+  const [examForm, setExamForm] = useState({ selectedCatalogId: "", nome: "", categoria: "laboratorial" as ExamCatalogItem["categoria"], descricaoCatalogo: "", data_exame: "", status: "", resultado: "", observacoes: "", pdf_nome: "", pdf_url: "" });
+  const [medicationForm, setMedicationForm] = useState({ selectedCatalogId: "", nome: "", principio_ativo: "", dosagemCatalogo: "", forma_farmaceutica: "comprimido" as MedicationCatalogItem["forma_farmaceutica"], fabricante: "", dosagemPaciente: "", periodo: "", status: "", descricao: "", observacoes: "" });
 
-  const syncPatientData = (patientId: string) => {
-    const foundPatient = store.getPatient(patientId);
-    if (!foundPatient) return;
-
-    const patientAnalyses = store.getPatientAnalyses(patientId);
-    const patientAppointments = store
-      .getAppointments()
-      .filter((appointment) => appointment.patientId === patientId);
-
-    setPatient(foundPatient);
-    setAnalyses(patientAnalyses);
-    setAppointments(patientAppointments);
-    setExamHistory(resolveExamHistory(foundPatient, patientAnalyses));
-    setMedicationHistory(resolveMedicationHistory(foundPatient));
+  const loadAll = async (patientId: string) => {
+    const patientData = await fetchPatient(patientId);
+    setPatient(patientData);
+    if (!secretaryMode) {
+      const [h, e, m, ec, mc] = await Promise.all([
+        fetchPatientHistory(patientId),
+        fetchPatientExamRecords(patientId),
+        fetchPatientMedicationRecords(patientId),
+        fetchExamCatalog(),
+        fetchMedicationCatalog(),
+      ]);
+      setHistory(h);
+      setExamRecords(e);
+      setMedicationRecords(m);
+      setExamCatalog(ec);
+      setMedicationCatalog(mc);
+    }
   };
 
   useEffect(() => {
     if (!id) return;
+    const load = async () => {
+      try {
+        await loadAll(id);
+      } catch {
+        toast({ title: "Erro", description: "Paciente não encontrado.", variant: "destructive" });
+        navigate(getDefaultRouteForUser());
+      }
+    };
+    void load();
+  }, [id, secretaryMode]);
 
-    const foundPatient = store.getPatient(id);
-    if (!foundPatient) {
-      toast({
-        title: "Erro",
-        description: "Paciente nao encontrado.",
-        variant: "destructive",
-      });
-      navigate(getDefaultRouteForUser());
-      return;
-    }
+  if (!patient) return <div>Carregando...</div>;
 
-    syncPatientData(id);
-  }, [id, navigate, toast]);
+  const age = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
 
-  const handleDeletePatient = () => {
-    if (!patient) return;
+  const handleDeletePatient = async () => {
     if (!window.confirm(`Deseja remover ${patient.name}?`)) return;
+    try {
+      await deletePatient(patient.id);
+      toast({ title: "Paciente removido", description: "O paciente foi removido com sucesso." });
+      navigate(backRoute);
+    } catch (error) {
+      toast({ title: "Erro", description: error instanceof Error ? error.message : "Não foi possível excluir o paciente.", variant: "destructive" });
+    }
+  };
 
-    const deleted = store.deletePatient(patient.id);
-    if (!deleted) {
-      toast({
-        title: "Erro",
-        description: "Nao foi possivel excluir o paciente.",
-        variant: "destructive",
-      });
+  const handleExamFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setExamForm((current) => ({ ...current, pdf_nome: "", pdf_url: "" }));
       return;
     }
 
-    toast({
-      title: "Paciente removido",
-      description: "O paciente foi removido com sucesso.",
-    });
-    navigate(backRoute);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setExamForm((current) => ({ ...current, pdf_nome: file.name, pdf_url: result }));
+    };
+    reader.readAsDataURL(file);
   };
 
-  if (!patient) {
-    return <div>Carregando...</div>;
-  }
-
-  const age =
-    new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
-  const now = Date.now();
-  const pastAppointments = appointments.filter(
-    (appointment) => new Date(appointment.startsAt).getTime() < now,
-  );
-  const upcomingAppointments = appointments.filter(
-    (appointment) => new Date(appointment.startsAt).getTime() >= now,
-  );
-
-  const openAppointmentDetails = (appointment: DoctorAppointment) => {
-    const startsAt = new Date(appointment.startsAt);
-    setSelectedAppointment(appointment);
-    setAppointmentDate(toDateInputValue(startsAt));
-    setAppointmentTime(toTimeInputValue(startsAt));
-    setAppointmentStatus(appointment.status);
-    setAppointmentNotes(appointment.notes ?? "");
+  const clearExamFile = () => {
+    setExamForm((current) => ({ ...current, pdf_nome: "", pdf_url: "" }));
   };
 
-  const closeAppointmentDetails = () => {
-    setSelectedAppointment(null);
-    setAppointmentDate("");
-    setAppointmentTime("");
-    setAppointmentStatus("waiting");
-    setAppointmentNotes("");
-  };
+  const openExamEditor = (exam: PatientExamRecord) => {
+    const catalog = examCatalog.find((item) => item.nome === exam.name);
+    const nextMode: Mode = catalog ? "existing" : "new";
 
-  const handleSaveAppointment = () => {
-    if (!selectedAppointment || !appointmentDate || !appointmentTime) return;
-
-    const updated = store.updateAppointment(selectedAppointment.id, {
-      startsAt: `${appointmentDate}T${appointmentTime}:00`,
-      status: appointmentStatus,
-      notes: appointmentNotes.trim() || undefined,
-    });
-
-    if (!updated) {
-      toast({
-        title: "Erro",
-        description: "Nao foi possivel atualizar a consulta.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    syncPatientData(patient.id);
-    closeAppointmentDetails();
-    toast({
-      title: "Consulta atualizada",
-      description: "As informacoes da consulta foram salvas.",
-    });
-  };
-
-  const persistExamHistory = (nextHistory: PatientExamRecord[]) => {
-    const updated = store.updatePatient(patient.id, {
-      clinicalData: {
-        ...patient.clinicalData,
-        examHistory: nextHistory,
-      },
-    });
-
-    if (updated) syncPatientData(patient.id);
-  };
-
-  const persistMedicationHistory = (nextHistory: PatientMedicationRecord[]) => {
-    const updated = store.updatePatient(patient.id, {
-      clinicalData: {
-        ...patient.clinicalData,
-        medicationHistory: nextHistory,
-      },
-    });
-
-    if (updated) syncPatientData(patient.id);
-  };
-
-  const openNewExamDialog = () => {
-    setEditingExamId(null);
-    setExamForm({
-      name: "",
-      date: "",
-      status: "",
-      result: "",
-      description: "",
-      pdfName: "",
-    });
-    setIsExamDialogOpen(true);
-  };
-
-  const openEditExamDialog = (exam: PatientExamRecord) => {
     setEditingExamId(exam.id);
+    setExamMode(nextMode);
     setExamForm({
-      name: exam.name,
-      date: exam.date,
+      selectedCatalogId: catalog ? String(catalog.exame_id) : "",
+      nome: exam.name,
+      categoria: catalog?.categoria || "laboratorial",
+      descricaoCatalogo: exam.description || "",
+      data_exame: exam.date,
       status: exam.status,
-      result: exam.result,
-      description: exam.description ?? "",
-      pdfName: exam.pdfName ?? "",
+      resultado: exam.result,
+      observacoes: exam.observations || "",
+      pdf_nome: exam.pdfName || "",
+      pdf_url: exam.pdfUrl || "",
     });
-    setIsExamDialogOpen(true);
+    setExamOpen(true);
   };
 
-  const handleSaveExam = () => {
-    if (!examForm.name || !examForm.date || !examForm.status || !examForm.result) return;
-
-    const nextExam: PatientExamRecord = {
-      id: editingExamId ?? `exam-${Date.now()}`,
-      name: examForm.name,
-      date: examForm.date,
-      status: examForm.status,
-      result: examForm.result,
-      description: examForm.description || undefined,
-      pdfName: examForm.pdfName || undefined,
-    };
-
-    const nextHistory = editingExamId
-      ? examHistory.map((exam) => (exam.id === editingExamId ? nextExam : exam))
-      : [nextExam, ...examHistory];
-
-    persistExamHistory(nextHistory);
-    setIsExamDialogOpen(false);
-  };
-
-  const handleDeleteExam = (examId: string) => {
-    persistExamHistory(examHistory.filter((exam) => exam.id !== examId));
-  };
-
-  const openNewMedicationDialog = () => {
-    setEditingMedicationId(null);
-    setMedicationForm({ name: "", period: "", status: "", description: "" });
-    setIsMedicationDialogOpen(true);
-  };
-
-  const openEditMedicationDialog = (medication: PatientMedicationRecord) => {
-    setEditingMedicationId(medication.id);
-    setMedicationForm({
-      name: medication.name,
-      period: medication.period,
-      status: medication.status,
-      description: medication.description,
-    });
-    setIsMedicationDialogOpen(true);
-  };
-
-  const handleSaveMedication = () => {
-    if (
-      !medicationForm.name ||
-      !medicationForm.period ||
-      !medicationForm.status ||
-      !medicationForm.description
-    ) {
-      return;
+  const saveHistory = async () => {
+    if (!id || !historyForm.titulo || !historyForm.descricao || !historyForm.data_registro) return;
+    try {
+      if (editingHistoryId) await updatePatientHistory(id, editingHistoryId, historyForm);
+      else await createPatientHistory(id, historyForm);
+      setHistory(await fetchPatientHistory(id));
+      setHistoryOpen(false);
+      setEditingHistoryId(null);
+      setHistoryForm({ titulo: "", descricao: "", data_registro: "" });
+    } catch (error) {
+      toast({ title: "Erro", description: error instanceof Error ? error.message : "Não foi possível salvar o histórico.", variant: "destructive" });
     }
-
-    const nextMedication: PatientMedicationRecord = {
-      id: editingMedicationId ?? `med-${Date.now()}`,
-      name: medicationForm.name,
-      period: medicationForm.period,
-      status: medicationForm.status,
-      description: medicationForm.description,
-    };
-
-    const nextHistory = editingMedicationId
-      ? medicationHistory.map((medication) =>
-          medication.id === editingMedicationId ? nextMedication : medication,
-        )
-      : [nextMedication, ...medicationHistory];
-
-    persistMedicationHistory(nextHistory);
-    setIsMedicationDialogOpen(false);
   };
 
-  const handleDeleteMedication = (medicationId: string) => {
-    persistMedicationHistory(
-      medicationHistory.filter((medication) => medication.id !== medicationId),
-    );
+  const saveExam = async () => {
+    if (!id) return;
+    try {
+      let nome = examForm.nome.trim();
+      if (examMode === "existing") {
+        const catalog = examCatalog.find((item) => String(item.exame_id) === examForm.selectedCatalogId);
+        if (!catalog) throw new Error("Selecione um exame do catálogo.");
+        nome = catalog.nome;
+      } else {
+        if (!nome) throw new Error("Informe o nome do exame.");
+        const created = await createExamCatalogItem({ nome, descricao: examForm.descricaoCatalogo || nome, categoria: examForm.categoria, preco: 0 });
+        setExamCatalog((current) => [created, ...current]);
+        nome = created.nome;
+      }
+      const payload = { nome, data_exame: examForm.data_exame || "", status: examForm.status || "", resultado: examForm.resultado || "", observacoes: examForm.observacoes || null, pdf_nome: examForm.pdf_nome || null, pdf_url: examForm.pdf_url || null, descricao: examMode === "new" ? examForm.descricaoCatalogo || null : null };
+      if (editingExamId) await updatePatientExamRecord(id, editingExamId, payload);
+      else await createPatientExamRecord(id, payload);
+      setExamRecords(await fetchPatientExamRecords(id));
+      setExamOpen(false);
+      setEditingExamId(null);
+      setExamMode("existing");
+      setExamForm({ selectedCatalogId: "", nome: "", categoria: "laboratorial", descricaoCatalogo: "", data_exame: "", status: "", resultado: "", observacoes: "", pdf_nome: "", pdf_url: "" });
+    } catch (error) {
+      toast({ title: "Erro", description: error instanceof Error ? error.message : "Não foi possível salvar o exame.", variant: "destructive" });
+    }
   };
 
-  const examTypeSuggestions = Array.from(
-    new Set(
-      [
-        "Hemograma",
-        "Ultrassonografia pélvica",
-        "Papanicolau",
-        "Colposcopia",
-        "Mamografia",
-        ...examHistory.map((exam) => exam.name),
-        ...analyses.flatMap((analysis) => analysis.clinicalData.previousExams),
-      ].filter(Boolean),
-    ),
-  );
+  const saveMedication = async () => {
+    if (!id) return;
+    try {
+      let nome = medicationForm.nome.trim();
+      let dosagem = medicationForm.dosagemPaciente.trim() || null;
+      if (medicationMode === "existing") {
+        const catalog = medicationCatalog.find((item) => String(item.medicamento_id) === medicationForm.selectedCatalogId);
+        if (!catalog) throw new Error("Selecione um medicamento do catálogo.");
+        nome = catalog.nome;
+        if (!dosagem) dosagem = catalog.dosagem || null;
+      } else {
+        if (!nome) throw new Error("Informe o nome do medicamento.");
+        const created = await createMedicationCatalogItem({ nome, principio_ativo: medicationForm.principio_ativo, dosagem: medicationForm.dosagemCatalogo, forma_farmaceutica: medicationForm.forma_farmaceutica, fabricante: medicationForm.fabricante, descricao: medicationForm.descricao || null });
+        setMedicationCatalog((current) => [created, ...current]);
+        nome = created.nome;
+        if (!dosagem) dosagem = created.dosagem || null;
+      }
+      const payload = { nome, dosagem, periodo: medicationForm.periodo || "", status: medicationForm.status || "", descricao: medicationForm.descricao || "", observacoes: medicationForm.observacoes || null };
+      if (editingMedicationId) await updatePatientMedicationRecord(id, editingMedicationId, payload);
+      else await createPatientMedicationRecord(id, payload);
+      setMedicationRecords(await fetchPatientMedicationRecords(id));
+      setMedicationOpen(false);
+      setEditingMedicationId(null);
+      setMedicationMode("existing");
+      setMedicationForm({ selectedCatalogId: "", nome: "", principio_ativo: "", dosagemCatalogo: "", forma_farmaceutica: "comprimido", fabricante: "", dosagemPaciente: "", periodo: "", status: "", descricao: "", observacoes: "" });
+    } catch (error) {
+      toast({ title: "Erro", description: error instanceof Error ? error.message : "Não foi possível salvar o medicamento.", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => navigate(backRoute)}>
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(backRoute)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {patient.name}
-            </h1>
-            <p className="mt-1 text-gray-600">
-              {secretaryMode
-                ? "Visualizacao restrita para a secretaria."
-                : "Detalhes completos do paciente."}
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">{patient.name}</h1>
+            <p className="mt-1 text-gray-600">{secretaryMode ? "Visualização restrita para a secretária." : "Histórico clínico completo do paciente."}</p>
           </div>
         </div>
-
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Link to={`/patients/${patient.id}/edit`}>
-            <Button variant="outline" className="w-full gap-2 sm:w-auto">
-              <Edit className="h-4 w-4" />
-              Editar
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            className="w-full gap-2 border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
-            onClick={handleDeletePatient}
-          >
-            <Trash2 className="h-4 w-4" />
-            Remover
-          </Button>
+          <Link to={`/patients/${patient.id}/edit`}><Button variant="outline" className="w-full gap-2 sm:w-auto"><Edit className="h-4 w-4" />Editar</Button></Link>
+          <Button variant="outline" className="w-full gap-2 border-red-200 text-red-600 hover:bg-red-50 sm:w-auto" onClick={() => void handleDeletePatient()}><Trash2 className="h-4 w-4" />Remover</Button>
         </div>
       </div>
 
-      <Card className="border-l-4 border-l-primary">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-8 w-8 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{patient.name}</h2>
-                <p className="text-gray-600">
-                  {age} anos • CPF {patient.cpf}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Nascimento: {new Date(patient.birthDate).toLocaleDateString("pt-BR")}
-                </p>
-              </div>
-            </div>
-            <Badge
-              className={
-                patient.status === "active"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-gray-100 text-gray-800"
-              }
-            >
-              {patient.status === "active" ? "Ativo" : "Inativo"}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+      <Card className="border-l-4 border-l-primary"><CardContent className="p-6"><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-4"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10"><User className="h-8 w-8 text-primary" /></div><div><h2 className="text-2xl font-bold text-gray-900">{patient.name}</h2><p className="text-gray-600">{age} anos • CPF {patient.cpf}</p><p className="text-sm text-gray-500">Nascimento: {new Date(patient.birthDate).toLocaleDateString("pt-BR")}</p></div></div><Badge className="bg-emerald-100 text-emerald-800">Ativo</Badge></div></CardContent></Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
-              Dados pessoais
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <span>{patient.email}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <span>{patient.phone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span>{new Date(patient.birthDate).toLocaleDateString("pt-BR")}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-primary" />
-              Dados clinicos basicos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Tipo sanguineo</p>
-              <Badge variant="outline" className="mt-1">
-                {patient.clinicalData.bloodType || "Nao informado"}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Alergias</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {patient.clinicalData.allergies.length > 0 ? (
-                  patient.clinicalData.allergies.map((allergy) => (
-                    <Badge key={allergy} variant="secondary">
-                      {allergy}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-gray-500">Nenhuma alergia registrada</span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5 text-primary" />Dados pessoais</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-gray-700"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" /><span>{patient.email}</span></div><div className="flex items-center gap-2"><Phone className="h-4 w-4 text-gray-400" /><span>{patient.phone}</span></div><p>Gênero: {patient.gender === "female" ? "Feminino" : patient.gender === "male" ? "Masculino" : "Outro"}</p></CardContent></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Heart className="h-5 w-5 text-primary" />Dados clínicos básicos</CardTitle></CardHeader><CardContent className="space-y-4"><div><p className="text-sm font-medium text-gray-900">Tipo sanguíneo</p><Badge variant="outline" className="mt-1">{patient.clinicalData.bloodType || "Não informado"}</Badge></div><div><p className="text-sm font-medium text-gray-900">Alergias</p><div className="mt-2 flex flex-wrap gap-2">{patient.clinicalData.allergies.length > 0 ? patient.clinicalData.allergies.map((allergy) => <Badge key={allergy} variant="secondary">{allergy}</Badge>) : <span className="text-sm text-gray-500">Nenhuma alergia registrada</span>}</div></div></CardContent></Card>
       </div>
 
-      {!secretaryMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-primary" />
-              Contato de emergencia
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-gray-700">
-            <p>Nome: {patient.emergencyContact.name || "Nao informado"}</p>
-            <p>Parentesco: {patient.emergencyContact.relationship || "Nao informado"}</p>
-            <p>Telefone: {patient.emergencyContact.phone || "Nao informado"}</p>
-          </CardContent>
-        </Card>
-      )}
+      <Card><CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-primary" />Contato de emergência</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-gray-700"><p>Nome: {patient.emergencyContact.name || "Não informado"}</p><p>Parentesco: {patient.emergencyContact.relationship || "Não informado"}</p><p>Telefone: {patient.emergencyContact.phone || "Não informado"}</p></CardContent></Card>
 
       <Tabs defaultValue="historico" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="historico">Historico</TabsTrigger>
-          <TabsTrigger value="exames">Exames</TabsTrigger>
-          <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="historico" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Ultimas consultas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {pastAppointments.length > 0 ? (
-                  [...pastAppointments]
-                    .sort(
-                      (left, right) =>
-                        new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime(),
-                    )
-                    .slice(0, 5)
-                    .map((appointment) => (
-                      <AppointmentHistoryCard
-                        key={appointment.id}
-                        appointment={appointment}
-                        onClick={() => openAppointmentDetails(appointment)}
-                      />
-                    ))
-                ) : (
-                  <p className="text-sm text-gray-500">Nenhuma consulta anterior registrada.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Proximas consultas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {upcomingAppointments.length > 0 ? (
-                  [...upcomingAppointments]
-                    .sort(
-                      (left, right) =>
-                        new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
-                    )
-                    .slice(0, 5)
-                    .map((appointment) => (
-                      <AppointmentHistoryCard
-                        key={appointment.id}
-                        appointment={appointment}
-                        onClick={() => openAppointmentDetails(appointment)}
-                      />
-                    ))
-                ) : (
-                  <p className="text-sm text-gray-500">Nenhuma consulta futura agendada.</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-primary" />
-                Historico das analises
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {analyses.length > 0 ? (
-                [...analyses]
-                  .sort(
-                    (left, right) =>
-                      new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime(),
-                  )
-                  .map((analysis) => (
-                    <div key={analysis.id} className="rounded-xl border p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {new Date(analysis.analyzedAt).toLocaleDateString("pt-BR")}
-                          </p>
-                          <p className="text-sm text-gray-600">{analysis.analyzedBy}</p>
-                        </div>
-                        <Badge variant="outline">
-                          {Math.round(analysis.results.confidence * 100)}% confianca
-                        </Badge>
-                      </div>
-                      <p className="mt-3 text-sm text-gray-700">
-                        {analysis.results.findings.join(", ")}
-                      </p>
-                      <p className="mt-2 text-sm text-gray-500">
-                        Recomendacoes: {analysis.results.recommendations.join(", ")}
-                      </p>
-                    </div>
-                  ))
-              ) : (
-                <p className="text-sm text-gray-500">Nenhuma analise registrada.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="exames" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Historico de exames e resultados
-              </CardTitle>
-              {!secretaryMode && (
-                <Button variant="outline" onClick={openNewExamDialog}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Adicionar registro
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {examHistory.length > 0 ? (
-                examHistory.map((exam) => (
-                  <div key={exam.id} className="rounded-xl border p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">{exam.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(exam.date).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
-                      <Badge variant="outline">{exam.status}</Badge>
-                    </div>
-                    {exam.description && (
-                      <p className="mt-3 text-sm text-gray-600">{exam.description}</p>
-                    )}
-                    <p className="mt-3 text-sm text-gray-700">{exam.result}</p>
-                    {exam.pdfName && (
-                      <p className="mt-2 text-sm text-primary">PDF anexado: {exam.pdfName}</p>
-                    )}
-                    {!secretaryMode && (
-                      <div className="mt-4 flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEditExamDialog(exam)}>
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteExam(exam.id)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">Nenhum exame registrado.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="medicamentos" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Pill className="h-5 w-5 text-primary" />
-                Historico de medicamentos
-              </CardTitle>
-              {!secretaryMode && (
-                <Button variant="outline" onClick={openNewMedicationDialog}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Adicionar registro
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {medicationHistory.length > 0 ? (
-                medicationHistory.map((medication) => (
-                  <div key={medication.id} className="rounded-xl border p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">{medication.name}</p>
-                        <p className="text-sm text-gray-600">{medication.period}</p>
-                      </div>
-                      <Badge variant="secondary">{medication.status}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm text-gray-700">{medication.description}</p>
-                    {!secretaryMode && (
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditMedicationDialog(medication)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteMedication(medication.id)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Nenhum medicamento associado ao historico do paciente.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="historico">Histórico</TabsTrigger><TabsTrigger value="exames">Exames</TabsTrigger><TabsTrigger value="medicamentos">Medicamentos</TabsTrigger></TabsList>
+        <TabsContent value="historico"><Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Histórico clínico</CardTitle>{!secretaryMode && <Button variant="outline" onClick={() => setHistoryOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Adicionar</Button>}</CardHeader><CardContent className="space-y-3">{secretaryMode ? <p className="text-sm text-gray-500">Histórico clínico detalhado é acessível apenas ao médico.</p> : history.length > 0 ? history.map((item) => <div key={item.historico_id} className="rounded-xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-gray-900">{item.titulo}</p><p className="text-sm text-gray-500">{new Date(item.data_registro).toLocaleDateString("pt-BR")}</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => { setEditingHistoryId(String(item.historico_id)); setHistoryForm({ titulo: item.titulo, descricao: item.descricao, data_registro: item.data_registro }); setHistoryOpen(true); }}>Editar</Button><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void deletePatientHistory(patient.id, String(item.historico_id)).then(async () => setHistory(await fetchPatientHistory(patient.id)))}>Excluir</Button></div></div><p className="mt-3 text-sm text-gray-700">{item.descricao}</p></div>) : <p className="text-sm text-gray-500">Nenhum histórico clínico registrado.</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="exames"><Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Exames e resultados</CardTitle>{!secretaryMode && <Button variant="outline" onClick={() => setExamOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Adicionar</Button>}</CardHeader><CardContent className="space-y-3">{secretaryMode ? <p className="text-sm text-gray-500">O histórico de exames detalhado é acessível apenas ao médico.</p> : examRecords.length > 0 ? examRecords.map((exam) => <div key={exam.id} className="rounded-xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-gray-900">{exam.name}</p><p className="text-sm text-gray-500">{new Date(exam.date).toLocaleDateString("pt-BR")}</p></div><div className="flex gap-2"><span className={getRecordStatusClass(exam.status)}>{exam.status}</span><Button variant="outline" size="sm" onClick={() => openExamEditor(exam)}>Editar</Button><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void deletePatientExamRecord(patient.id, exam.id).then(async () => setExamRecords(await fetchPatientExamRecords(patient.id)))}>Excluir</Button></div></div><p className="mt-3 text-sm text-gray-700">{exam.result}</p>{exam.description && <p className="mt-2 text-sm text-gray-500">{exam.description}</p>}{exam.observations && <p className="mt-2 text-sm text-gray-500">Observa??es: {exam.observations}</p>}{exam.pdfName && exam.pdfUrl && <a href={exam.pdfUrl} download={exam.pdfName} className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">Baixar arquivo: {exam.pdfName}</a>}{exam.pdfName && !exam.pdfUrl && <p className="mt-2 text-sm text-gray-400">Arquivo anexado: {exam.pdfName}</p>}</div>) : <p className="text-sm text-gray-500">Nenhum exame registrado.</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="medicamentos"><Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="flex items-center gap-2"><Pill className="h-5 w-5 text-primary" />Medicamentos</CardTitle>{!secretaryMode && <Button variant="outline" onClick={() => setMedicationOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Adicionar</Button>}</CardHeader><CardContent className="space-y-3">{secretaryMode ? <p className="text-sm text-gray-500">O histórico de medicamentos é acessível apenas ao médico.</p> : medicationRecords.length > 0 ? medicationRecords.map((medication) => <div key={medication.id} className="rounded-xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-gray-900">{medication.name}</p><p className="text-sm text-gray-500">{medication.period}</p></div><div className="flex gap-2"><Badge variant="outline">{medication.status}</Badge><Button variant="outline" size="sm" onClick={() => { setEditingMedicationId(medication.id); setMedicationMode("existing"); setMedicationForm({ selectedCatalogId: "", nome: medication.name, principio_ativo: "", dosagemCatalogo: "", forma_farmaceutica: "comprimido", fabricante: "", dosagemPaciente: "", periodo: medication.period, status: medication.status, descricao: medication.description, observacoes: "" }); setMedicationOpen(true); }}>Editar</Button><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void deletePatientMedicationRecord(patient.id, medication.id).then(async () => setMedicationRecords(await fetchPatientMedicationRecords(patient.id)))}>Excluir</Button></div></div><p className="mt-3 text-sm text-gray-700">{medication.description}</p></div>) : <p className="text-sm text-gray-500">Nenhum medicamento registrado.</p>}</CardContent></Card></TabsContent>
       </Tabs>
 
-      <Dialog open={Boolean(selectedAppointment)} onOpenChange={(open) => !open && closeAppointmentDetails()}>
-        <DialogContent className="sm:max-w-[640px]">
-          <DialogHeader>
-            <DialogTitle>Consulta</DialogTitle>
-          </DialogHeader>
-          {selectedAppointment && (
-            <div className="space-y-5">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <p className="text-sm font-medium text-slate-900">
-                  {selectedAppointment.doctorName} · {selectedAppointment.specialty}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {new Date(selectedAppointment.startsAt).toLocaleDateString("pt-BR")} às{" "}
-                  {new Date(selectedAppointment.startsAt).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
+      <Dialog open={historyOpen} onOpenChange={(open) => { setHistoryOpen(open); if (!open) { setEditingHistoryId(null); setHistoryForm({ titulo: "", descricao: "", data_registro: "" }); } }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{editingHistoryId ? "Editar histórico clínico" : "Adicionar histórico clínico"}</DialogTitle></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label>Título</Label><Input value={historyForm.titulo} onChange={(e) => setHistoryForm((c) => ({ ...c, titulo: e.target.value }))} /></div><div className="space-y-2"><Label>Data</Label><Input type="date" value={historyForm.data_registro} onChange={(e) => setHistoryForm((c) => ({ ...c, data_registro: e.target.value }))} /></div><div className="space-y-2"><Label>Descrição</Label><Textarea rows={4} value={historyForm.descricao} onChange={(e) => setHistoryForm((c) => ({ ...c, descricao: e.target.value }))} /></div></div><DialogFooter><Button variant="outline" onClick={() => setHistoryOpen(false)}>Cancelar</Button><Button onClick={() => void saveHistory()}>Salvar</Button></DialogFooter></DialogContent></Dialog>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="consult-date">Data</Label>
-                  <Input
-                    id="consult-date"
-                    type="date"
-                    value={appointmentDate}
-                    onChange={(event) => setAppointmentDate(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="consult-time">Horario</Label>
-                  <Input
-                    id="consult-time"
-                    type="time"
-                    value={appointmentTime}
-                    onChange={(event) => setAppointmentTime(event.target.value)}
-                  />
-                </div>
-              </div>
+      <Dialog open={examOpen} onOpenChange={(open) => { setExamOpen(open); if (!open) { setEditingExamId(null); setExamMode("existing"); setExamForm({ selectedCatalogId: "", nome: "", categoria: "laboratorial", descricaoCatalogo: "", data_exame: "", status: "", resultado: "", observacoes: "", pdf_nome: "", pdf_url: "" }); } }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]"><DialogHeader><DialogTitle>{editingExamId ? "Editar exame do paciente" : "Adicionar exame"}</DialogTitle></DialogHeader><div className="space-y-4"><div className="grid grid-cols-2 gap-2"><Button type="button" variant={examMode === "existing" ? "default" : "outline"} onClick={() => setExamMode("existing")}>Selecionar existente</Button><Button type="button" variant={examMode === "new" ? "default" : "outline"} onClick={() => setExamMode("new")}>Criar novo no catálogo</Button></div>{examMode === "existing" ? <div className="space-y-2"><Label>Exame do catálogo</Label><Select value={examForm.selectedCatalogId} onValueChange={(value) => setExamForm((c) => ({ ...c, selectedCatalogId: value }))}><SelectTrigger><SelectValue placeholder="Selecione um exame" /></SelectTrigger><SelectContent>{examCatalog.map((exam) => <SelectItem key={exam.exame_id} value={String(exam.exame_id)}>{exam.nome}</SelectItem>)}</SelectContent></Select></div> : <div className="space-y-3 rounded-xl border p-4"><div className="space-y-2"><Label>Nome do novo exame</Label><Input value={examForm.nome} onChange={(e) => setExamForm((c) => ({ ...c, nome: e.target.value }))} /></div><div className="space-y-2"><Label>Descrição do catálogo</Label><Textarea rows={3} value={examForm.descricaoCatalogo} onChange={(e) => setExamForm((c) => ({ ...c, descricaoCatalogo: e.target.value }))} /></div></div>}<div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data do exame</Label><Input type="date" value={examForm.data_exame} onChange={(e) => setExamForm((c) => ({ ...c, data_exame: e.target.value }))} /></div><div className="space-y-2"><Label>Status</Label><Input value={examForm.status} onChange={(e) => setExamForm((c) => ({ ...c, status: e.target.value }))} /></div></div><div className="space-y-2"><Label>Resultado</Label><Textarea rows={3} value={examForm.resultado} onChange={(e) => setExamForm((c) => ({ ...c, resultado: e.target.value }))} /></div><div className="space-y-2"><Label>Observações</Label><Textarea rows={3} value={examForm.observacoes} onChange={(e) => setExamForm((c) => ({ ...c, observacoes: e.target.value }))} /></div><div className="space-y-2"><Label>Upload de resultado</Label><Input type="file" accept=".pdf,image/*" onChange={handleExamFileChange} />{examForm.pdf_nome && <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"><span className="truncate pr-3">Arquivo selecionado: {examForm.pdf_nome}</span><button type="button" className="font-medium text-rose-600 hover:text-rose-700" onClick={clearExamFile}>X</button></div>}</div></div><DialogFooter><Button variant="outline" onClick={() => setExamOpen(false)}>Cancelar</Button><Button onClick={() => void saveExam()}>Salvar</Button></DialogFooter></DialogContent></Dialog>
 
-              <div className="space-y-2">
-                <Label htmlFor="consult-status">Status</Label>
-                <Select
-                  value={appointmentStatus}
-                  onValueChange={(value: DoctorAppointment["status"]) => setAppointmentStatus(value)}
-                >
-                  <SelectTrigger id="consult-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="waiting">Agendado</SelectItem>
-                    <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="cancelled">A reagendar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="consult-notes">Descritivo da consulta</Label>
-                <Input
-                  id="consult-notes"
-                  value={appointmentNotes}
-                  onChange={(event) => setAppointmentNotes(event.target.value)}
-                  placeholder="Informacoes da consulta"
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeAppointmentDetails}>
-              Fechar
-            </Button>
-            {!secretaryMode && selectedAppointment && new Date(selectedAppointment.startsAt).getTime() >= now && (
-              <Button type="button" onClick={handleSaveAppointment}>
-                Reagendar / salvar
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isExamDialogOpen} onOpenChange={setIsExamDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingExamId ? "Editar exame" : "Adicionar exame"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="exam-name">Tipo de exame</Label>
-              <Input
-                id="exam-name"
-                placeholder="Digite e pressione Enter"
-                value={examForm.name}
-                onChange={(event) =>
-                  setExamForm((current) => ({ ...current, name: event.target.value }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    setExamForm((current) => ({ ...current, name: current.name.trim() }));
-                  }
-                }}
-              />
-              <div className="flex flex-wrap gap-2">
-                {examTypeSuggestions.map((type) => (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExamForm((current) => ({ ...current, name: type }))}
-                  >
-                    {type}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="exam-date">Data</Label>
-                <Input
-                  id="exam-date"
-                  type="date"
-                  value={examForm.date}
-                  onChange={(event) => setExamForm((current) => ({ ...current, date: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="exam-status">Status</Label>
-                <Input
-                  id="exam-status"
-                  value={examForm.status}
-                  onChange={(event) => setExamForm((current) => ({ ...current, status: event.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="exam-description">Descrição</Label>
-              <Input
-                id="exam-description"
-                value={examForm.description}
-                onChange={(event) =>
-                  setExamForm((current) => ({ ...current, description: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="exam-result">Resultado</Label>
-              <Input
-                id="exam-result"
-                value={examForm.result}
-                onChange={(event) => setExamForm((current) => ({ ...current, result: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="exam-pdf">PDF do exame</Label>
-              <Input
-                id="exam-pdf"
-                type="file"
-                accept="application/pdf"
-                onChange={(event) =>
-                  setExamForm((current) => ({
-                    ...current,
-                    pdfName: event.target.files?.[0]?.name ?? current.pdfName,
-                  }))
-                }
-              />
-              {examForm.pdfName && (
-                <p className="text-sm text-gray-500">Arquivo selecionado: {examForm.pdfName}</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsExamDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleSaveExam}>
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isMedicationDialogOpen} onOpenChange={setIsMedicationDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingMedicationId ? "Editar medicamento" : "Adicionar medicamento"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="med-name">Medicamento</Label>
-              <Input
-                id="med-name"
-                value={medicationForm.name}
-                onChange={(event) =>
-                  setMedicationForm((current) => ({ ...current, name: event.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="med-period">Periodo</Label>
-                <Input
-                  id="med-period"
-                  value={medicationForm.period}
-                  onChange={(event) =>
-                    setMedicationForm((current) => ({ ...current, period: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="med-status">Status</Label>
-                <Input
-                  id="med-status"
-                  value={medicationForm.status}
-                  onChange={(event) =>
-                    setMedicationForm((current) => ({ ...current, status: event.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="med-description">Descricao</Label>
-              <Input
-                id="med-description"
-                value={medicationForm.description}
-                onChange={(event) =>
-                  setMedicationForm((current) => ({ ...current, description: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsMedicationDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleSaveMedication}>
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Dialog open={medicationOpen} onOpenChange={(open) => { setMedicationOpen(open); if (!open) { setEditingMedicationId(null); setMedicationMode("existing"); setMedicationForm({ selectedCatalogId: "", nome: "", principio_ativo: "", dosagemCatalogo: "", forma_farmaceutica: "comprimido", fabricante: "", dosagemPaciente: "", periodo: "", status: "", descricao: "", observacoes: "" }); } }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]"><DialogHeader><DialogTitle>{editingMedicationId ? "Editar medicamento do paciente" : "Adicionar medicamento"}</DialogTitle></DialogHeader><div className="space-y-4"><div className="grid grid-cols-2 gap-2"><Button type="button" variant={medicationMode === "existing" ? "default" : "outline"} onClick={() => setMedicationMode("existing")}>Selecionar existente</Button><Button type="button" variant={medicationMode === "new" ? "default" : "outline"} onClick={() => setMedicationMode("new")}>Criar novo no catálogo</Button></div>{medicationMode === "existing" ? <div className="space-y-2"><Label>Medicamento do catálogo</Label><Select value={medicationForm.selectedCatalogId} onValueChange={(value) => setMedicationForm((c) => ({ ...c, selectedCatalogId: value }))}><SelectTrigger><SelectValue placeholder="Selecione um medicamento" /></SelectTrigger><SelectContent>{medicationCatalog.map((medication) => <SelectItem key={medication.medicamento_id} value={String(medication.medicamento_id)}>{medication.nome}</SelectItem>)}</SelectContent></Select></div> : <div className="space-y-3 rounded-xl border p-4"><div className="space-y-2"><Label>Nome do novo medicamento</Label><Input value={medicationForm.nome} onChange={(e) => setMedicationForm((c) => ({ ...c, nome: e.target.value }))} /></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Princípio ativo</Label><Input value={medicationForm.principio_ativo} onChange={(e) => setMedicationForm((c) => ({ ...c, principio_ativo: e.target.value }))} /></div><div className="space-y-2"><Label>Dosagem padrão</Label><Input value={medicationForm.dosagemCatalogo} onChange={(e) => setMedicationForm((c) => ({ ...c, dosagemCatalogo: e.target.value }))} /></div></div><div className="space-y-2"><Label>Fabricante</Label><Input value={medicationForm.fabricante} onChange={(e) => setMedicationForm((c) => ({ ...c, fabricante: e.target.value }))} /></div></div>}<div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Dosagem para o paciente</Label><Input value={medicationForm.dosagemPaciente} onChange={(e) => setMedicationForm((c) => ({ ...c, dosagemPaciente: e.target.value }))} placeholder="Ex.: 500 mg 2x ao dia" /></div><div className="space-y-2"><Label>Período</Label><Input value={medicationForm.periodo} onChange={(e) => setMedicationForm((c) => ({ ...c, periodo: e.target.value }))} /></div></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Status</Label><Input value={medicationForm.status} onChange={(e) => setMedicationForm((c) => ({ ...c, status: e.target.value }))} /></div><div className="space-y-2"><Label>Observações</Label><Input value={medicationForm.observacoes} onChange={(e) => setMedicationForm((c) => ({ ...c, observacoes: e.target.value }))} /></div></div><div className="space-y-2"><Label>Descrição clínica</Label><Textarea rows={3} value={medicationForm.descricao} onChange={(e) => setMedicationForm((c) => ({ ...c, descricao: e.target.value }))} /></div></div><DialogFooter><Button variant="outline" onClick={() => setMedicationOpen(false)}>Cancelar</Button><Button onClick={() => void saveMedication()}>Salvar</Button></DialogFooter></DialogContent></Dialog>
     </div>
   );
-}
-
-function AppointmentHistoryCard({
-  appointment,
-  onClick,
-}: {
-  appointment: DoctorAppointment;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="w-full rounded-xl border p-4 text-left transition hover:border-primary/40 hover:bg-slate-50"
-      onClick={onClick}
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-medium text-gray-900">
-            {new Date(appointment.startsAt).toLocaleDateString("pt-BR")} às{" "}
-            {new Date(appointment.startsAt).toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-          <p className="text-sm text-gray-600">
-            {appointment.doctorName} · {appointment.specialty}
-          </p>
-        </div>
-        <Badge
-          className={
-            appointment.status === "confirmed"
-              ? "bg-emerald-100 text-emerald-800"
-              : appointment.status === "waiting"
-                ? "bg-amber-100 text-amber-800"
-                : "bg-rose-100 text-rose-800"
-          }
-        >
-          {appointment.status === "confirmed"
-            ? "Confirmada"
-            : appointment.status === "waiting"
-              ? "Aguardando"
-              : "A reagendar"}
-        </Badge>
-      </div>
-      {appointment.notes && <p className="mt-3 text-sm text-gray-700">{appointment.notes}</p>}
-    </button>
-  );
-}
-
-function resolveExamHistory(patient: Patient, analyses: AIAnalysis[]) {
-  if (patient.clinicalData.examHistory && patient.clinicalData.examHistory.length > 0) {
-    return patient.clinicalData.examHistory;
-  }
-
-  const baseExams = analyses.flatMap((analysis) =>
-    analysis.clinicalData.previousExams.map((examName) => ({
-      id: `analysis-${analysis.id}-${examName}`,
-      name: examName,
-      date: analysis.analyzedAt.slice(0, 10),
-      status: analysis.results.riskLevel === "high" ? "Requer atenção" : "Concluído",
-      result: analysis.results.findings.join(", "),
-    })),
-  );
-
-  if (patient.clinicalData.lastExam) {
-    baseExams.unshift({
-      id: "last-exam",
-      name: "Último exame registrado",
-      date: patient.clinicalData.lastExam,
-      status: "Resultado disponível",
-      result:
-        patient.clinicalData.observations || "Sem observações adicionais registradas.",
-    });
-  }
-
-  return baseExams;
-}
-
-function resolveMedicationHistory(patient: Patient) {
-  if (
-    patient.clinicalData.medicationHistory &&
-    patient.clinicalData.medicationHistory.length > 0
-  ) {
-    return patient.clinicalData.medicationHistory;
-  }
-
-  return patient.clinicalData.medications.map((medication, index) => ({
-    id: `medication-${index}-${medication}`,
-    name: medication,
-    period: "Uso atual registrado",
-    status: "Em acompanhamento",
-    description:
-      patient.clinicalData.observations || "Sem observações adicionais para este medicamento.",
-  }));
-}
-
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function toTimeInputValue(date: Date) {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
 }

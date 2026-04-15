@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createPatient, fetchPatients } from "@/lib/patient-api";
 import { store } from "@/lib/store";
 import { DoctorAppointment, Patient } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -88,12 +89,19 @@ export default function SecretaryDashboard() {
     allergies: "",
   });
 
-  const refreshSnapshot = () => {
-    setSnapshot(store.getSecretaryDashboardData());
+  const refreshSnapshot = async () => {
+    const dashboard = store.getSecretaryDashboardData();
+    const patients = await fetchPatients().catch(() => dashboard.patients);
+    setSnapshot({
+      ...dashboard,
+      patients,
+      totalPatients: patients.length,
+      activePatients: patients.filter((patient) => patient.status === "active").length,
+    });
   };
 
   useEffect(() => {
-    refreshSnapshot();
+    void refreshSnapshot();
   }, []);
 
   const groupedAppointments = useMemo(() => {
@@ -134,7 +142,7 @@ export default function SecretaryDashboard() {
       return;
     }
 
-    refreshSnapshot();
+    void refreshSnapshot();
     toast({
       title: "Agendamento removido",
       description: "A agenda do médico foi atualizada.",
@@ -195,7 +203,7 @@ export default function SecretaryDashboard() {
       return;
     }
 
-    refreshSnapshot();
+    void refreshSnapshot();
     setSelectedAppointmentId(updated.id);
     closeAppointmentEditor();
     toast({
@@ -227,7 +235,7 @@ export default function SecretaryDashboard() {
     setIsScheduleDialogOpen(true);
   };
 
-  const handleSchedulePatient = () => {
+  const handleSchedulePatient = async () => {
     if (!appointmentDate || !appointmentTime) {
       toast({
         title: "Campos obrigatórios",
@@ -255,40 +263,54 @@ export default function SecretaryDashboard() {
         return;
       }
 
-      const patient = store.addPatient({
-        name: newPatientForm.name,
-        email: newPatientForm.email,
-        phone: newPatientForm.phone,
-        cpf: newPatientForm.cpf,
-        birthDate: newPatientForm.birthDate,
-        gender: "other",
-        address: {
-          street: "",
-          number: "",
-          city: "",
-          state: "",
-          zipCode: "",
-        },
-        clinicalData: {
-          bloodType: newPatientForm.bloodType,
-          allergies: newPatientForm.allergies
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          medications: [],
-          medicalHistory: [],
-          lastExam: "",
-          observations: "",
-        },
-        emergencyContact: {
-          name: "",
-          relationship: "",
-          phone: "",
-        },
-        status: "active",
-      });
+      try {
+        const patient = await createPatient({
+          id: "",
+          name: newPatientForm.name,
+          email: newPatientForm.email,
+          phone: newPatientForm.phone,
+          cpf: newPatientForm.cpf,
+          birthDate: newPatientForm.birthDate,
+          gender: "other",
+          address: {
+            street: "",
+            number: "",
+            complement: "",
+            city: "",
+            state: "",
+            zipCode: "",
+          },
+          clinicalData: {
+            bloodType: newPatientForm.bloodType,
+            allergies: newPatientForm.allergies
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            medications: [],
+            medicalHistory: [],
+            lastExam: "",
+            observations: "",
+          },
+          emergencyContact: {
+            name: "",
+            relationship: "",
+            phone: "",
+          },
+          createdAt: "",
+          updatedAt: "",
+          status: "active",
+        });
 
-      patientId = patient.id;
+        patientId = patient.id;
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description:
+            error instanceof Error ? error.message : "Não foi possível cadastrar o paciente.",
+          variant: "destructive",
+        });
+        return;
+      }
     } else if (!selectedPatientId) {
       toast({
         title: "Paciente obrigatório",
@@ -308,7 +330,7 @@ export default function SecretaryDashboard() {
       notes: appointmentNotes.trim() || undefined,
     });
 
-    refreshSnapshot();
+    await refreshSnapshot();
     setReferenceDate(new Date(startsAt));
     setSelectedAppointmentId(createdAppointment.id);
     setIsScheduleDialogOpen(false);

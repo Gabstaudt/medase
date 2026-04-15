@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { store } from "@/lib/store";
+import { deletePatient, fetchPatients } from "@/lib/patient-api";
 import { Patient } from "@/lib/types";
 import { Mail, Plus, Trash2, Users } from "lucide-react";
 
@@ -20,28 +20,41 @@ export default function SecretaryPatients() {
   const { toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
 
-  useEffect(() => {
-    setPatients(store.getPatients());
-  }, []);
-
-  const handleRemovePatient = (patientId: string, patientName: string) => {
-    if (!window.confirm(`Remover ${patientName} da base de pacientes?`)) return;
-
-    const deleted = store.deletePatient(patientId);
-    if (!deleted) {
+  const loadPatients = async () => {
+    try {
+      setPatients(await fetchPatients());
+    } catch (error) {
       toast({
         title: "Erro",
-        description: "Não foi possível remover o paciente.",
+        description:
+          error instanceof Error ? error.message : "Não foi possível carregar os pacientes.",
         variant: "destructive",
       });
-      return;
     }
+  };
 
-    setPatients(store.getPatients());
-    toast({
-      title: "Paciente removido",
-      description: `${patientName} foi removido com sucesso.`,
-    });
+  useEffect(() => {
+    void loadPatients();
+  }, []);
+
+  const handleRemovePatient = async (patientId: string, patientName: string) => {
+    if (!window.confirm(`Remover ${patientName} da base de pacientes?`)) return;
+
+    try {
+      await deletePatient(patientId);
+      await loadPatients();
+      toast({
+        title: "Paciente removido",
+        description: `${patientName} foi removido com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description:
+          error instanceof Error ? error.message : "Não foi possível remover o paciente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -69,7 +82,7 @@ export default function SecretaryPatients() {
           <div>
             <div className="text-sm text-gray-600">Pacientes cadastrados</div>
             <div className="text-2xl font-bold text-gray-900">{patients.length}</div>
-            <div className="text-xs text-gray-500">Base disponível para a secretaria</div>
+            <div className="text-xs text-gray-500">Base disponível para a secretária</div>
           </div>
         </CardContent>
       </Card>
@@ -134,7 +147,7 @@ export default function SecretaryPatients() {
                           size="sm"
                           variant="outline"
                           className="border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => handleRemovePatient(patient.id, patient.name)}
+                          onClick={() => void handleRemovePatient(patient.id, patient.name)}
                         >
                           Remover
                         </Button>
@@ -182,7 +195,7 @@ export default function SecretaryPatients() {
                   <Button
                     variant="outline"
                     className="w-full border-red-200 text-red-600 hover:bg-red-50"
-                    onClick={() => handleRemovePatient(patient.id, patient.name)}
+                    onClick={() => void handleRemovePatient(patient.id, patient.name)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover paciente

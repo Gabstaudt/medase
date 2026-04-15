@@ -5,7 +5,9 @@ export interface PatientExamRecord {
   status: string;
   result: string;
   description?: string;
+  observations?: string;
   pdfName?: string;
+  pdfUrl?: string;
 }
 
 export interface PatientMedicationRecord {
