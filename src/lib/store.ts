@@ -1,4 +1,9 @@
-import { Patient, AIAnalysis, DashboardStats } from "./types";
+import {
+  Patient,
+  AIAnalysis,
+  DashboardStats,
+  DoctorAppointment,
+} from "./types";
 
 // Mock data for demonstration
 const mockPatients: Patient[] = [
@@ -97,10 +102,41 @@ const mockAnalyses: AIAnalysis[] = [
   },
 ];
 
+const mockAppointments: DoctorAppointment[] = [
+  {
+    id: "apt-1",
+    patientId: "1",
+    doctorName: "Dra. Helena Costa",
+    specialty: "Ginecologia",
+    startsAt: "2026-04-10T09:00:00",
+    status: "confirmed",
+    notes: "Retorno para revisão de exames",
+  },
+  {
+    id: "apt-2",
+    patientId: "2",
+    doctorName: "Dra. Helena Costa",
+    specialty: "Ginecologia",
+    startsAt: "2026-04-10T10:30:00",
+    status: "waiting",
+    notes: "Primeira consulta",
+  },
+  {
+    id: "apt-3",
+    patientId: "1",
+    doctorName: "Dra. Helena Costa",
+    specialty: "Ginecologia",
+    startsAt: "2026-04-11T14:00:00",
+    status: "confirmed",
+    notes: "Avaliação clínica",
+  },
+];
+
 // Simple state management
 class MedaseStore {
   private patients: Patient[] = [...mockPatients];
   private analyses: AIAnalysis[] = [...mockAnalyses];
+  private appointments: DoctorAppointment[] = [...mockAppointments];
 
   // Patient management
   getPatients(): Patient[] {
@@ -162,6 +198,63 @@ class MedaseStore {
     return this.analyses.filter((a) => a.patientId === patientId);
   }
 
+  getAppointments(): DoctorAppointment[] {
+    return [...this.appointments].sort(
+      (a, b) =>
+        new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+    );
+  }
+
+  addAppointment(
+    appointment: Omit<DoctorAppointment, "id">,
+  ): DoctorAppointment {
+    const newAppointment: DoctorAppointment = {
+      ...appointment,
+      id: `apt-${Date.now()}`,
+    };
+
+    this.appointments.push(newAppointment);
+    return newAppointment;
+  }
+
+  updateAppointmentStatus(
+    appointmentId: string,
+    status: DoctorAppointment["status"],
+  ): DoctorAppointment | undefined {
+    const index = this.appointments.findIndex((a) => a.id === appointmentId);
+    if (index === -1) return undefined;
+
+    this.appointments[index] = {
+      ...this.appointments[index],
+      status,
+    };
+
+    return this.appointments[index];
+  }
+
+  updateAppointment(
+    appointmentId: string,
+    updates: Partial<Omit<DoctorAppointment, "id">>,
+  ): DoctorAppointment | undefined {
+    const index = this.appointments.findIndex((a) => a.id === appointmentId);
+    if (index === -1) return undefined;
+
+    this.appointments[index] = {
+      ...this.appointments[index],
+      ...updates,
+    };
+
+    return this.appointments[index];
+  }
+
+  deleteAppointment(appointmentId: string): boolean {
+    const index = this.appointments.findIndex((a) => a.id === appointmentId);
+    if (index === -1) return false;
+
+    this.appointments.splice(index, 1);
+    return true;
+  }
+
   addAnalysis(analysis: Omit<AIAnalysis, "id" | "analyzedAt">): AIAnalysis {
     const newAnalysis: AIAnalysis = {
       ...analysis,
@@ -199,6 +292,24 @@ class MedaseStore {
       aiAnalysesThisMonth,
       recentPatients,
       recentAnalyses: this.analyses.slice(-3),
+    };
+  }
+
+  getSecretaryDashboardData() {
+    const activePatients = this.patients.filter((p) => p.status === "active");
+    const appointments = this.getAppointments();
+    const today = new Date().toISOString().slice(0, 10);
+
+    return {
+      totalPatients: this.patients.length,
+      activePatients: activePatients.length,
+      appointmentsToday: appointments.filter((a) =>
+        a.startsAt.startsWith(today),
+      ).length,
+      waitingAppointments: appointments.filter((a) => a.status === "waiting")
+        .length,
+      appointments,
+      patients: this.getPatients(),
     };
   }
 }

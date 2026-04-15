@@ -5,7 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import HeaderBar from "@/components/layout/HeaderBar";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import {
+  getCurrentUser,
+  getDefaultRouteForUser,
+  hasRole,
+  isAuthenticated,
+} from "@/lib/auth";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -16,9 +22,12 @@ import AIDetection from "./pages/AIDetection";
 import Settings from "./pages/Settings";
 import DoctorProfile from "./pages/DoctorProfile";
 import ExamsMedications from "./pages/ExamsMedications";
+import DoctorAgenda from "./pages/DoctorAgenda";
 import NotFound from "./pages/NotFound";
 import { Register } from "./pages/Register";
 import Login from "./pages/Login";
+import SecretaryDashboard from "./pages/SecretaryDashboard";
+import SecretaryPatients from "./pages/SecretaryPatients";
 
 const queryClient = new QueryClient();
 
@@ -33,18 +42,106 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to={getDefaultRouteForUser()} replace />} />
+
+            <Route
+              path="/secretary"
+              element={
+                <ProtectedRoute allowedRoles={["SECRETARIA"]}>
+                  <SecretaryDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/secretary/patients"
+              element={
+                <ProtectedRoute allowedRoles={["SECRETARIA"]}>
+                  <SecretaryPatients />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Rotas internas */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/patients" element={<PatientList />} />
-            <Route path="/patients/new" element={<PatientForm />} />
-            <Route path="/patients/:id" element={<PatientDetails />} />
-            <Route path="/patients/:id/edit" element={<PatientForm />} />
-            <Route path="/exams-medications" element={<ExamsMedications />} />
-            <Route path="/ai-detection" element={<AIDetection />} />
-            <Route path="/profile" element={<DoctorProfile />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patients"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <PatientList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agenda"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <DoctorAgenda />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patients/new"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "SECRETARIA"]}>
+                  <PatientForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patients/:id"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "SECRETARIA"]}>
+                  <PatientDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patients/:id/edit"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "SECRETARIA"]}>
+                  <PatientForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/exams-medications"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <ExamsMedications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-detection"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <AIDetection />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <DoctorProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
 
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
@@ -57,6 +154,29 @@ const App = () => (
 
 export default App;
 
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: ReactNode;
+  allowedRoles: Array<"ADMIN" | "SECRETARIA">;
+}) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const user = getCurrentUser();
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.some((role) => hasRole(role))) {
+    return <Navigate to={getDefaultRouteForUser()} replace />;
+  }
+
+  return <>{children}</>;
+}
+
 // --------------------------------------------------
 // Layout inteligente: oculta Sidebar nas rotas de login/cadastro
 // --------------------------------------------------
@@ -67,8 +187,14 @@ export function AuthAwareLayout({ children }: { children: React.ReactNode }) {
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/register";
 
+  const user = getCurrentUser();
+
   if (isAuthRoute) {
     return <>{children}</>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
   // Layout padrão do sistema
@@ -88,7 +214,10 @@ export function AuthAwareLayout({ children }: { children: React.ReactNode }) {
 
       {/* ===== HEADER COM MENU (SOMENTE MOBILE) ===== */}
       <div className="fixed inset-x-0 top-0 z-30 md:hidden">
-        <HeaderBar onMenuClick={() => setIsOpen(true)} />
+        <HeaderBar
+          onMenuClick={() => setIsOpen(true)}
+          title={user.role === "SECRETARIA" ? "Medase Secretária" : "Medase"}
+        />
       </div>
 
       {/* ===== CONTEÚDO PRINCIPAL =====

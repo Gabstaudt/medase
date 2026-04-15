@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientTable } from "@/components/PatientTable";
 import { PatientCard } from "@/components/PatientCard";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Grid, List, Download, Filter } from "lucide-react";
+import { Plus, Users, Grid, List } from "lucide-react";
 import { store } from "@/lib/store";
 import { Patient } from "@/lib/types";
 import { Link } from "react-router-dom";
@@ -151,15 +151,6 @@ export default function PatientList() {
                   <Grid className="h-4 w-4" />
                 </Button>
               </div>
-
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Filter className="h-4 w-4" />
-                Filtros
-              </Button>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Download className="h-4 w-4" />
-                Exportar
-              </Button>
             </div>
           </div>
         </CardHeader>

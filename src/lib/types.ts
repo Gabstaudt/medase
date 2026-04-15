@@ -1,3 +1,21 @@
+export interface PatientExamRecord {
+  id: string;
+  name: string;
+  date: string;
+  status: string;
+  result: string;
+  description?: string;
+  pdfName?: string;
+}
+
+export interface PatientMedicationRecord {
+  id: string;
+  name: string;
+  period: string;
+  status: string;
+  description: string;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -21,6 +39,8 @@ export interface Patient {
     medicalHistory: string[];
     lastExam: string;
     observations: string;
+    examHistory?: PatientExamRecord[];
+    medicationHistory?: PatientMedicationRecord[];
   };
   emergencyContact: {
     name: string;
@@ -30,6 +50,27 @@ export interface Patient {
   createdAt: string;
   updatedAt: string;
   status: "active" | "inactive";
+}
+
+export type UserRole = "ADMIN" | "SECRETARIA";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  backendRole?: string;
+  phone?: string;
+}
+
+export interface DoctorAppointment {
+  id: string;
+  patientId: string;
+  doctorName: string;
+  specialty: string;
+  startsAt: string;
+  status: "confirmed" | "waiting" | "cancelled";
+  notes?: string;
 }
 
 export interface AIAnalysis {
