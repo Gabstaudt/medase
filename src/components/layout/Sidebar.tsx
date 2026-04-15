@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { getCurrentUser, isSecretary, logout } from "@/lib/auth";
+import { getCurrentUser, isBackendDoctor, isSecretary, logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   Brain,
@@ -84,9 +84,12 @@ export function Sidebar({ className, isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const user = getCurrentUser();
   const secretaryMode = isSecretary();
+  const backendDoctorMode = isBackendDoctor();
   const navigationItems = secretaryMode
     ? secretaryNavigationItems
-    : adminNavigationItems;
+    : adminNavigationItems.filter((item) =>
+        item.href === "/exams-medications" ? backendDoctorMode : true,
+      );
 
   const handleLogout = () => {
     if (!window.confirm("Tem certeza que deseja sair do sistema?")) return;
