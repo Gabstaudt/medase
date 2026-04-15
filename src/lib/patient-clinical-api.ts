@@ -50,6 +50,7 @@ type PatientExamApi = {
   descricao?: string | null;
   observacoes?: string | null;
   pdf_nome?: string | null;
+  pdf_url?: string | null;
 };
 
 type PatientMedicationApi = {
@@ -100,8 +101,10 @@ function mapExamRecord(record: PatientExamApi): PatientExamRecord {
     date: record.data_exame,
     status: record.status,
     result: record.resultado,
-    description: record.descricao || record.observacoes || undefined,
+    description: record.descricao || undefined,
+    observations: record.observacoes || undefined,
     pdfName: record.pdf_nome || undefined,
+    pdfUrl: record.pdf_url || undefined,
   };
 }
 
@@ -206,6 +209,7 @@ export async function createPatientExamRecord(
     descricao?: string | null;
     observacoes?: string | null;
     pdf_nome?: string | null;
+    pdf_url?: string | null;
   },
 ): Promise<PatientExamRecord> {
   const record = await apiRequest<PatientExamApi>(`/pacientes/${patientId}/exames`, {
@@ -227,6 +231,7 @@ export async function updatePatientExamRecord(
     descricao?: string | null;
     observacoes?: string | null;
     pdf_nome?: string | null;
+    pdf_url?: string | null;
   }>,
 ): Promise<PatientExamRecord> {
   const record = await apiRequest<PatientExamApi>(`/pacientes/${patientId}/exames/${examId}`, {
